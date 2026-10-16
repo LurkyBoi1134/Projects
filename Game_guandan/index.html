@@ -1,0 +1,969 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123b34">
+  <title>Guandan — The Table Is Yours</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --felt: #16463b;
+      --felt-deep: #10372f;
+      --felt-light: #23604f;
+      --paper: #f4efdf;
+      --paper-dark: #e4dcc7;
+      --ink: #202921;
+      --muted: #a7b8a9;
+      --gold: #d6b66f;
+      --red: #b53b34;
+      --black: #1c2924;
+      --line: rgba(244, 239, 223, .18);
+      --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+      --sans: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+    }
+    button { font: inherit; }
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 370px); grid-template-rows: 76px minmax(0, 1fr); }
+    .topbar {
+      height: 76px;
+      padding: 0 clamp(18px, 4vw, 64px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(32, 41, 33, .12);
+      background: var(--paper);
+      position: relative;
+      z-index: 2;
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+    .brand { display: flex; align-items: center; gap: 13px; }
+    .brand-mark {
+      width: 36px; height: 36px; display: grid; place-items: center;
+      color: var(--paper); background: var(--felt); border-radius: 50%;
+      font: 22px/1 var(--serif); box-shadow: inset 0 0 0 1px rgba(214,182,111,.5);
+    }
+    .brand-name { font: 22px/1 var(--serif); letter-spacing: .02em; }
+    .brand-sub { color: #77786d; font-size: 10px; letter-spacing: .17em; text-transform: uppercase; margin-top: 5px; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .level-chip {
+      color: #765c25; border: 1px solid #d9c68e; border-radius: 2px;
+      padding: 9px 13px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .level-chip strong { font: 18px/1 var(--serif); color: var(--ink); }
+    .icon-button, .text-button {
+      border: 1px solid rgba(32,41,33,.22); color: var(--ink); background: transparent;
+      border-radius: 2px; height: 38px; cursor: pointer; transition: background .18s, color .18s, border .18s;
+    }
+    .icon-button { width: 40px; display: grid; place-items: center; font-size: 17px; }
+    .text-button { padding: 0 15px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    .icon-button:hover, .text-button:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+    .table-wrap {
+      grid-column: 1; grid-row: 2; min-height: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 17px clamp(12px, 2vw, 30px) 0;
+      background-color: #e7e0ce;
+      background-image: radial-gradient(rgba(32,41,33,.08) .7px, transparent .7px);
+      background-size: 8px 8px;
+    }
+    .table {
+      width: min(1180px, 100%); height: clamp(360px, 61vh, 650px); min-height: 360px;
+      position: relative; border-radius: 48% / 42%; overflow: hidden;
+      border: 1px solid rgba(214,182,111,.48);
+      background:
+        radial-gradient(ellipse at 50% 46%, rgba(41,105,84,.7) 0, transparent 63%),
+        repeating-linear-gradient(35deg, rgba(255,255,255,.012) 0 1px, transparent 1px 5px),
+        var(--felt);
+      box-shadow: 0 18px 38px rgba(24,39,31,.22), inset 0 0 0 9px rgba(11,44,36,.27), inset 0 0 0 10px rgba(214,182,111,.18);
+    }
+    .table::before {
+      content: ""; position: absolute; inset: 19px; border: 1px solid rgba(214,182,111,.2);
+      border-radius: inherit; pointer-events: none;
+    }
+    .table-label { position: absolute; top: 21px; left: 50%; transform: translateX(-50%); color: rgba(244,239,223,.49); font-size: 9px; letter-spacing: .24em; text-transform: uppercase; white-space: nowrap; }
+    .seat {
+      position: absolute; z-index: 1; display: flex; align-items: center; gap: 10px;
+      color: var(--paper); min-width: 120px;
+    }
+    .seat-north { top: 57px; left: 50%; transform: translateX(-50%); flex-direction: row; gap: 6px; }
+    .seat-west { top: 50%; left: clamp(20px, 7vw, 100px); transform: translateY(-50%); flex-direction: column; }
+    .seat-east { top: 50%; right: clamp(20px, 7vw, 100px); transform: translateY(-50%); flex-direction: column; }
+    .seat-south { bottom: 19px; left: 50%; transform: translateX(-50%); flex-direction: column; gap: 4px; }
+    .avatar {
+      width: 42px; height: 42px; flex: 0 0 auto; border: 1px solid rgba(214,182,111,.68);
+      border-radius: 50%; display: grid; place-items: center; color: var(--gold);
+      background: rgba(9,35,29,.64); font: 19px/1 var(--serif); position: relative;
+    }
+    .seat-south .avatar { width: 34px; height: 34px; font-size: 15px; }
+    .seat-copy { text-align: center; }
+    .seat-name { font: 14px/1.2 var(--serif); white-space: nowrap; }
+    .seat-meta { margin-top: 4px; color: rgba(244,239,223,.6); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+    .seat-count { color: var(--gold); }
+    .seat.active .avatar { background: var(--gold); color: var(--felt-deep); box-shadow: 0 0 0 4px rgba(214,182,111,.14), 0 0 22px rgba(214,182,111,.4); }
+    .seat.active .seat-name::after { content: "  ·  TURN"; color: var(--gold); font: 8px var(--sans); letter-spacing: .09em; }
+    html[lang="zh-Hans"] .seat.active .seat-name::after { content: "  ·  轮到"; }
+    .seat.partner .avatar { border-style: dashed; }
+    .seat.done .avatar { opacity: .48; }
+    .trick-area {
+      position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%);
+      width: min(780px, 82%); min-height: 156px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 11px; text-align: center;
+    }
+    .trick-caption { min-height: 14px; color: rgba(244,239,223,.64); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; }
+    .trick-cards { min-height: 110px; max-width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(214,182,111,.5) transparent; }
+    .trick-play { flex: 0 0 auto; min-width: 56px; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px 7px; border-left: 1px solid rgba(214,182,111,.2); }
+    .trick-play.latest { border-left-color: rgba(214,182,111,.75); background: rgba(8,35,29,.2); }
+    .trick-play-label { color: rgba(244,239,223,.75); font: 9px var(--sans); white-space: nowrap; }
+    .trick-play.latest .trick-play-label { color: var(--gold); }
+    .trick-play-cards { display: flex; align-items: center; justify-content: center; padding-left: 8px; }
+    .trick-play .playing-card { width: clamp(27px, 3.4vw, 39px); height: clamp(40px, 5.1vw, 55px); margin-left: -9px; transform: none; cursor: default; }
+    .trick-play .playing-card:first-child { margin-left: 0; }
+    .trick-play .corner { top: 3px; left: 3px; font-size: 8px; }
+    .trick-play .corner .suit { font-size: 8px; }
+    .trick-play .card-center { font-size: 15px; }
+    .trick-pass { color: rgba(244,239,223,.56); font: 10px var(--sans); padding: 9px 5px; }
+    .trick-cards .playing-card:nth-child(2n) { --tilt: 3deg; }
+    .trick-cards .playing-card:nth-child(2n+1) { --tilt: -2deg; }
+    .trick-note { color: var(--gold); font: 12px var(--serif); min-height: 15px; }
+    .deck-mark { position: absolute; right: 22%; bottom: 25%; color: rgba(244,239,223,.45); display: flex; align-items: center; gap: 8px; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; transform: rotate(-8deg); }
+    .deck-stack { width: 32px; height: 43px; border: 1px solid rgba(214,182,111,.64); border-radius: 4px; background: repeating-linear-gradient(45deg, transparent 0 4px, rgba(214,182,111,.25) 4px 5px), var(--felt-deep); box-shadow: 3px 3px 0 -1px var(--felt), 4px 4px 0 0 rgba(214,182,111,.45); }
+    .announcement {
+      position: absolute; z-index: 3; left: 50%; top: 28%; transform: translate(-50%, 8px);
+      background: var(--paper); color: var(--ink); border: 1px solid var(--gold); padding: 10px 18px;
+      font: 13px var(--serif); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; white-space: nowrap;
+    }
+    .announcement.show { opacity: 1; transform: translate(-50%, 0); }
+    .table-footer { width: min(1180px, 100%); display: flex; justify-content: space-between; padding: 12px 7px 8px; color: #737469; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+    .table-footer .turn-message { color: #4b5147; }
+    .hand-panel { grid-column: 2; grid-row: 2; min-width: 0; display: flex; flex-direction: column; width: 100%; padding: 24px 18px; background: var(--paper); border-left: 1px solid rgba(32,41,33,.14); }
+    .hand-heading { width: min(1180px, 100%); margin: 0 auto 8px; display: flex; justify-content: space-between; align-items: baseline; color: #74766b; font-size: 9px; letter-spacing: .15em; text-transform: uppercase; }
+    .hand-heading strong { color: var(--ink); font: 14px var(--serif); letter-spacing: 0; text-transform: none; }
+    .hand-scroll { width: min(1180px, 100%); margin: 0 auto; overflow-x: auto; overflow-y: visible; scrollbar-width: thin; scrollbar-color: #c5bda8 transparent; padding: 32px 2px 10px; }
+    .hand { min-width: max-content; display: flex; align-items: flex-end; justify-content: center; padding: 4px 5px 1px; }
+    .hand-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 1px; }
+    .language-control { height: 38px; display: flex; align-items: center; gap: 6px; padding: 0 9px; border: 1px solid rgba(32,41,33,.22); color: var(--ink); font-size: 12px; }
+    .language-control select { max-width: 112px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+    .language-control select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .hand-panel .action { min-width: 0; flex: 1 1 86px; padding: 0 8px; }
+    .playing-card {
+      width: clamp(42px, 5.1vw, 64px); height: clamp(64px, 8.1vw, 91px); flex: 0 0 auto;
+      position: relative; margin-left: -17px; border: 1px solid #d5d0c3; border-radius: 6px;
+      background: linear-gradient(145deg, #fffef9 0%, #f8f5eb 80%, #e9e4d7 100%);
+      box-shadow: 0 3px 5px rgba(15,27,22,.2); color: var(--black); cursor: pointer;
+      transition: transform .16s, box-shadow .16s, border-color .16s;
+      padding: 0; text-align: left; user-select: none;
+    }
+    .playing-card:first-child { margin-left: 0; }
+    .playing-card:hover { transform: translateY(-8px); z-index: 4; box-shadow: 0 7px 12px rgba(15,27,22,.23); }
+    .playing-card.selected { transform: translateY(-33.333%); border-color: var(--gold); box-shadow: 0 0 0 2px rgba(214,182,111,.6), 0 8px 13px rgba(15,27,22,.22); z-index: 3; }
+    .playing-card.red { color: var(--red); }
+    .playing-card.wild { border-color: #c2a45e; background: linear-gradient(145deg, #fffef7, #f3e8c5); }
+    .corner { position: absolute; top: 5px; left: 5px; display: flex; flex-direction: column; align-items: center; font: 12px/1 var(--serif); }
+    .corner .suit { font: 12px/1 var(--sans); margin-top: 2px; }
+    .card-center { position: absolute; inset: 0; display: grid; place-items: center; font: 24px/1 var(--serif); opacity: .9; }
+    .playing-card.joker .card-center { font: 10px/1.2 var(--sans); font-weight: 700; letter-spacing: .06em; writing-mode: vertical-rl; }
+    .playing-card.joker .corner { font-size: 8px; writing-mode: vertical-rl; }
+    .playing-card.wild::after { content: "WILD"; position: absolute; bottom: 4px; right: 4px; color: #8a6c2c; font-size: 6px; letter-spacing: .08em; }
+    .action {
+      height: 38px; min-width: 114px; padding: 0 19px; border: 1px solid #b9b5a7;
+      background: transparent; color: var(--ink); border-radius: 2px; cursor: pointer;
+      font-size: 10px; letter-spacing: .13em; text-transform: uppercase; transition: .18s;
+    }
+    .action:hover:not(:disabled) { border-color: var(--ink); background: #eae5d7; }
+    .action.primary { border-color: var(--felt); background: var(--felt); color: var(--paper); }
+    .action.primary:hover:not(:disabled) { background: var(--felt-deep); }
+    .action:disabled { opacity: .38; cursor: not-allowed; }
+    .status-line { min-height: 15px; color: #686b61; text-align: center; font-size: 10px; margin: 4px 0 0; }
+    .help-drawer, .review-drawer {
+      position: fixed; z-index: 10; inset: 0; display: grid; place-items: center;
+      background: rgba(13,27,22,.58); padding: 20px; opacity: 0; pointer-events: none; transition: opacity .18s;
+    }
+    .help-drawer.open, .review-drawer.open { opacity: 1; pointer-events: auto; }
+    .help-sheet, .review-sheet { width: min(520px, 100%); max-height: 90vh; overflow: auto; padding: 26px clamp(21px, 5vw, 38px); background: var(--paper); border: 1px solid var(--gold); box-shadow: 0 20px 60px rgba(0,0,0,.25); transform: translateY(8px); transition: transform .18s; }
+    .review-sheet { width: min(700px, 100%); }
+    .help-drawer.open .help-sheet, .review-drawer.open .review-sheet { transform: translateY(0); }
+    .help-head { display: flex; justify-content: space-between; align-items: start; border-bottom: 1px solid #d5cdb8; padding-bottom: 15px; }
+    .help-head h2 { margin: 0; font: 26px var(--serif); }
+    .help-head p { margin: 5px 0 0; color: #717368; font-size: 11px; }
+    .help-close { border: 0; background: transparent; font-size: 22px; cursor: pointer; color: #55594f; }
+    .rule-list { padding: 0; margin: 18px 0 0; list-style: none; }
+    .rule-list li { padding: 10px 0; border-bottom: 1px solid rgba(32,41,33,.09); color: #4f544a; font-size: 12px; line-height: 1.55; }
+    .rule-list strong { display: block; color: var(--ink); font: 14px var(--serif); margin-bottom: 2px; }
+    .source-note { margin-top: 14px; color: #77786d; font-size: 10px; line-height: 1.5; }
+    .source-note a { color: #47685b; }
+    .review-summary { margin: 17px 0 12px; color: #737469; font-size: 11px; }
+    .review-list { display: grid; gap: 8px; }
+    .review-entry { padding: 12px 13px; border: 1px solid rgba(32,41,33,.12); background: rgba(255,255,255,.34); }
+    .review-entry-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .review-move-title { color: var(--ink); font: 14px var(--serif); }
+    .review-badge { flex: 0 0 auto; padding: 4px 7px; border: 1px solid #bdcbb8; color: #3d654d; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+    .review-entry.caution .review-badge { border-color: #d3b17d; color: #825b20; }
+    .review-entry.strong .review-badge { border-color: #7fa18c; color: #24543b; }
+    .review-cards { margin-top: 5px; color: #65695e; font-size: 11px; }
+    .review-reason { margin: 7px 0 0; color: #4d5349; font-size: 11px; line-height: 1.5; }
+    .review-empty { padding: 23px 12px; text-align: center; color: #74766b; border: 1px dashed #c9c1ad; font-size: 12px; line-height: 1.6; }
+    .demo-indicator { position: absolute; top: 20px; right: 9%; color: var(--gold); border: 1px solid rgba(214,182,111,.55); padding: 5px 8px; font-size: 8px; letter-spacing: .13em; text-transform: uppercase; }
+    .demo-indicator[hidden] { display: none; }
+    html[lang="zh-Hans"] .playing-card.wild::after { content: "配"; }
+    @keyframes deal-in { from { opacity: 0; transform: translateY(14px) rotate(2deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }
+    .playing-card.deal:not(.selected) { animation: deal-in .32s both; }
+    @media (max-width: 900px) {
+      .app-shell { display: flex; flex-direction: column; }
+      .topbar { flex: 0 0 auto; }
+      .table-wrap { flex: 1; min-height: 0; padding: 17px clamp(12px, 3vw, 44px) 0; }
+      .table { height: clamp(420px, 61vh, 650px); min-height: 420px; }
+      .hand-panel { display: block; flex: 0 0 auto; padding: 9px max(14px, calc((100vw - 1180px) / 2)) 16px; border-left: 0; border-top: 1px solid rgba(32,41,33,.14); }
+      .hand-controls { flex-wrap: nowrap; }
+      .hand-panel .action { min-width: 95px; flex: 0 1 auto; padding: 0 13px; }
+    }
+    @media (min-height: 900px) { .hand-panel { padding-bottom: 25px; } }
+    @media (max-width: 700px) {
+      .topbar { height: auto; min-height: 63px; padding: 8px 14px; flex-wrap: wrap; row-gap: 8px; }
+      .top-actions { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; }
+      .brand-mark { width: 31px; height: 31px; font-size: 19px; }
+      .brand-name { font-size: 19px; }
+      .brand-sub { font-size: 8px; }
+      .level-chip { padding: 7px 9px; font-size: 9px; }
+      .level-chip strong { font-size: 16px; }
+      .text-button { padding: 0 10px; font-size: 9px; }
+      .language-control { height: 36px; padding: 0 7px; }
+      .icon-button { width: 36px; height: 36px; }
+      .table-wrap { padding: 13px 9px 0; justify-content: flex-start; }
+      .table { height: clamp(390px, 54vh, 530px); min-height: 390px; border-radius: 44% / 33%; }
+      .table::before { inset: 12px; }
+      .table-label { top: 18px; font-size: 8px; }
+      .seat-north { top: 42px; }
+      .seat-west { left: 12px; }
+      .seat-east { right: 12px; }
+      .avatar { width: 35px; height: 35px; font-size: 16px; }
+      .seat-name { font-size: 12px; }
+      .seat-meta { font-size: 8px; }
+      .seat-south { bottom: 14px; }
+      .trick-area { width: 82%; top: 49%; min-height: 130px; }
+      .trick-cards { min-height: 82px; justify-content: flex-start; gap: 4px; }
+      .trick-play { min-width: 44px; padding: 4px 4px; gap: 4px; }
+      .trick-play .playing-card { width: 29px; height: 43px; }
+      .trick-play .card-center { font-size: 13px; }
+      .trick-play .corner { font-size: 7px; }
+      .trick-play-label { font-size: 8px; }
+      .deck-mark { right: 18%; bottom: 24%; font-size: 7px; }
+      .deck-stack { width: 25px; height: 34px; }
+      .table-footer { padding: 8px 4px; font-size: 8px; }
+      .hand-panel { padding: 8px 10px 10px; }
+      .hand-heading { margin-bottom: 5px; }
+      .hand { justify-content: flex-start; }
+      .playing-card { width: 48px; height: 70px; margin-left: -16px; }
+      .corner { top: 4px; left: 4px; font-size: 11px; }
+      .corner .suit { font-size: 10px; }
+      .card-center { font-size: 20px; }
+      .hand-scroll { padding: 25px 2px 7px; }
+      .action { min-width: 95px; height: 36px; padding: 0 13px; font-size: 9px; }
+      .status-line { font-size: 9px; }
+    }
+    @media (max-width: 390px) {
+      .brand { gap: 8px; }
+      .brand-name { font-size: 17px; }
+      .level-chip { gap: 5px; padding: 6px 7px; }
+      .top-actions { gap: 6px; }
+      .seat-west { left: 4px; }
+      .seat-east { right: 4px; }
+      .trick-area { width: 60%; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">掼</div>
+        <div><div class="brand-name" id="brandName">Guandan</div><div class="brand-sub" data-i18n="subtitle">A game of partnership</div></div>
+      </div>
+      <div class="top-actions">
+        <div class="level-chip"><span data-i18n="level">Level</span> <strong id="levelValue">2</strong></div>
+        <button class="icon-button" id="helpButton" aria-label="Rules" title="Rules">?</button>
+        <button class="text-button" id="newGameButton" data-i18n="newGame">New game</button>
+        <button class="text-button" id="reviewButton" data-i18n="review">Review</button>
+        <button class="text-button" id="demoButton" data-i18n="demo" aria-pressed="false">Demo</button>
+        <label class="language-control" title="Language">
+          <span aria-hidden="true">文</span>
+          <select id="languageSelect" aria-label="Language">
+            <option value="en">English</option>
+            <option value="zh">简体中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <section class="table-wrap" id="tableWrap" aria-label="Guandan game table">
+      <div class="table" id="table">
+        <div class="seat seat-north" id="seat-2"></div>
+        <div class="seat seat-west" id="seat-1"></div>
+        <div class="seat seat-east" id="seat-3"></div>
+        <div class="seat seat-south" id="seat-0"></div>
+        <div class="trick-area">
+          <div class="trick-caption" id="trickCaption">The first lead is yours</div>
+          <div class="trick-cards" id="trickCards"></div>
+          <div class="trick-note" id="trickNote">Select a combination to lead</div>
+        </div>
+        <div class="deck-mark" aria-hidden="true"><span class="deck-stack"></span><span data-i18n="deckCount">108 cards</span></div>
+        <div class="demo-indicator" id="demoIndicator" data-i18n="demoLabel" hidden>AI demo</div>
+        <div class="announcement" id="announcement"></div>
+      </div>
+      <div class="table-footer"><span id="roundLabel">Hand 1 · Opening deal</span><span class="turn-message" id="turnMessage">Your turn</span></div>
+    </section>
+
+    <section class="hand-panel" aria-label="Your hand" data-i18n-aria="yourHand">
+      <div class="hand-heading"><span data-i18n="yourHand">Your hand</span><strong id="handCount">27 cards</strong></div>
+      <div class="hand-controls">
+        <button class="action" id="sortButton" title="Sort your hand" data-i18n="sort">Sort</button>
+        <button class="action" id="passButton" data-i18n="pass">Pass</button>
+        <button class="action primary" id="playButton" data-i18n="play">Play cards</button>
+      </div>
+      <div class="hand-scroll"><div class="hand" id="hand"></div></div>
+      <p class="status-line" id="statusLine" aria-live="polite">Choose cards, then play. Click a card again to deselect it.</p>
+    </section>
+  </main>
+
+  <div class="help-drawer" id="helpDrawer" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <section class="help-sheet">
+      <div class="help-head"><div><h2 id="helpTitle" data-i18n="rulesTitle">At the table</h2><p data-i18n="rulesSubtitle">A quick guide to this practice game</p></div><button class="help-close" id="closeHelp" aria-label="Close rules">×</button></div>
+      <ul class="rule-list">
+        <li><strong data-i18n="ruleDealTitle">Partners &amp; deal</strong><span data-i18n="ruleDeal">Four players sit opposite their partner. Two decks are shuffled and dealt 27 cards to each player.</span></li>
+        <li><strong data-i18n="rulePlaysTitle">Make a play</strong><span data-i18n="rulePlays">Lead any valid combination: single, pair, triple, three pairs, straight, full house, or consecutive triples. Other players must beat the same kind of play or pass.</span></li>
+        <li><strong data-i18n="ruleBombsTitle">Bombs</strong><span data-i18n="ruleBombs">Four or more of a kind beat ordinary plays. A five-card straight flush beats bombs of up to five cards; the four-joker bomb beats everything.</span></li>
+        <li><strong data-i18n="ruleLevelTitle">Level card</strong><span data-i18n="ruleLevel">Heart cards of the current level are wild and can stand in for another suited card. Level cards rank above A; jokers rank highest.</span></li>
+        <li><strong data-i18n="ruleWinTitle">Win the hand</strong><span data-i18n="ruleWin">The first partnership to place both players takes the hand. Its level advances by 3 for a 1st–2nd finish, 2 if its partner finishes third, or 1 otherwise. A-level is the finish.</span></li>
+      </ul>
+      <p class="source-note"><span data-i18n="rulesNote">This is a single-player practice table against three basic opponents. Tribute and tournament variations are omitted. Rules reference:</span> <a href="https://zh.wikipedia.org/zh-hans/%E6%8E%BC%E8%9B%8B" target="_blank" rel="noreferrer" data-i18n="rulesSource">Wikipedia: Guandan</a>.</p>
+    </section>
+  </div>
+
+  <div class="review-drawer" id="reviewDrawer" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+    <section class="review-sheet">
+      <div class="help-head"><div><h2 id="reviewTitle" data-i18n="reviewTitle">Game review</h2><p data-i18n="reviewSubtitle">Move-by-move analysis from the local game AI</p></div><button class="help-close" id="closeReview" aria-label="Close review">×</button></div>
+      <p class="review-summary" id="reviewSummary"></p>
+      <div class="review-list" id="reviewList"></div>
+      <p class="source-note" data-i18n="reviewDisclosure">Rule-based analysis of legal combinations and partner control; it is not an external AI service.</p>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const suits = ["♠", "♥", "♣", "♦"];
+      const messages = {
+        en: {
+          pageTitle: "Guandan — The Table Is Yours", subtitle: "A game of partnership", level: "Level", newGame: "New game", nextHand: "Next hand", language: "Language", rules: "Rules", closeRules: "Close rules", tableLabel: "Two decks · four players · one table", deckCount: "108 cards", yourHand: "Your hand", sort: "Sort", pass: "Pass", play: "Play cards", openingDeal: "Opening deal", newDeal: "New deal", handComplete: "Hand complete", hand: "Hand", card: "card", cards: "cards", openLead: "Open lead", firstLead: "The first lead is yours", leadPrompt: "Select a combination to lead", nextTrick: "The next play starts a new trick", readyNext: "Ready for the next hand", yourTurnLead: "Your turn · lead any combination", yourTurnBeat: "Your turn · beat the play or pass", thinking: "{name} is thinking", hasLead: "{name} has the lead", played: "{name} played", yourTeam: "Your team", opponents: "Opponents", you: "You", west: "West", partner: "Partner", east: "East", upstream: "Upstream", first: "1st", second: "2nd", third: "3rd", fourth: "4th · Downstream",
+          rulesTitle: "At the table", rulesSubtitle: "A quick guide to this practice game", ruleDealTitle: "Partners & deal", ruleDeal: "Four players sit opposite their partner. Two decks are shuffled and dealt 27 cards to each player.", rulePlaysTitle: "Make a play", rulePlays: "Lead any valid combination: single, pair, triple, three pairs, straight, full house, or consecutive triples. Other players must beat the same kind of play or pass.", ruleBombsTitle: "Bombs", ruleBombs: "Four or more of a kind beat ordinary plays. A five-card straight flush beats bombs of up to five cards; the four-joker bomb beats everything.", ruleLevelTitle: "Level card", ruleLevel: "Heart cards of the current level are wild and can stand in for another suited card. Level cards rank above A; jokers rank highest.", ruleWinTitle: "Win the hand", ruleWin: "The first partnership to place both players takes the hand. Its level advances by 3 for a 1st–2nd finish, 2 if its partner finishes third, or 1 otherwise. A-level is the finish.", rulesNote: "This is a single-player practice table against three basic opponents. Tribute and tournament variations are omitted. Rules reference:", rulesSource: "Wikipedia: Guandan",
+          smallJoker: "Small Joker", bigJoker: "Big Joker", wildCard: "wild card", comboSingle: "Single", comboPair: "Pair", comboTriple: "Three of a kind", comboThreePairs: "Three pairs", comboConsecutiveTriples: "Consecutive triples", comboFullHouse: "Full house", comboStraight: "Straight", comboStraightFlush: "Straight flush", comboBomb: "{count}-card bomb", comboJokerBomb: "Four jokers",
+          statusOpening: "You have the opening lead. Choose any valid combination.", statusOpeningOther: "{name} has the opening lead.", statusSelect: "Choose cards, then play. Click a card again to deselect it.", statusInvalid: "That selection is not a recognized combination.", statusCannotBeat: "That play does not beat the current combination.", statusPassed: "You passed this trick.", comboSelected: "{combo}", noCurrentPlay: "That selection does not beat the current play", passed: "passed", finishes: "finishes", reports: "reports {count}", out: "is out", leads: "{name} leads", takesHand: "takes the hand", advanceOne: "level", advanceMany: "levels", reachesA: " · A-level reached", gameWinner: "{team} wins at A-level! Start a new game to play again.", handResult: "{team} takes the hand · {level} advances {count} {unit}{reached}", yourTeamWins: "Your team", otherTeamWins: "The other team", finishPlace: "{name} finishes {place}", secondFinish: "in 2nd place", thirdFinish: "in 3rd place",
+          review: "Review", demo: "Demo", stopDemo: "Stop demo", demoLabel: "AI demo", reviewTitle: "Game review", reviewSubtitle: "Move-by-move analysis from the local game AI", reviewDisclosure: "Rule-based AI reviews recorded choices and available combinations; it is not an external model.", closeReview: "Close review", reviewSummary: "Hand {hand} · {count} decisions analyzed", reviewEmpty: "No moves to review yet", reviewEmptyBody: "Play a few turns and your move history will appear here.", reviewPlayed: "{name} played {combo}", reviewPassed: "{name} passed", reviewStrong: "Strong choice", reviewGood: "Good choice", reviewCaution: "Could improve", reviewNeutral: "Situational", reviewPartnerPass: "Good restraint: {name} had the lead for your team, so passing protected their control.", reviewNoResponse: "Good pass: the move finder found no legal response to {combo} in this hand.", reviewMissedBlock: "Could improve: the move finder found a legal {combo} to beat {name}'s {previous}; passing gave them the lead.", reviewPassOption: "Situational: a legal response existed, but passing saved those cards. Consider the opponent's remaining cards.", reviewBomb: "Risky: using a {combo} on a non-bomb play spends a high-value response. Save it unless you must block or finish.", reviewPartnerOver: "Caution: you overtook your partner's {previous}. Passing could preserve their lead.", reviewLowerResponse: "Could improve: a lower {combo} could beat that play and keep stronger cards.", reviewShed: "Good: you shed {count} cards at once without spending a bomb.", reviewHighSingle: "Risky: a high single can be costly and leaves your hand fragmented.", reviewSound: "Sound play: this legal {combo} takes the trick without an unnecessarily expensive response.", demoStarted: "Demo mode is playing all seats. Watch the table; choose Stop demo to take control.", demoStopped: "Demo stopped. You control your hand.", demoPlay: "{name} selects {combo} · {cards}. {reason}", demoPass: "{name} passes · {reason}", demoReasonLead: "Leads with a {combo} to shed {count} cards.", demoReasonBeat: "Beats {previous} using a {combo}, saving higher-cost responses.", demoReasonBomb: "Uses a {combo} because no ordinary candidate can beat the play.", demoReasonPass: "The move finder found no legal response to {combo}.",
+          ratingPass: "Pass", ratingPlay: "Play", moveNumber: "Move {count}"
+        },
+        zh: {
+          pageTitle: "掼蛋 · 牌桌由你掌控", subtitle: "搭档之间的牌局", level: "级牌", newGame: "新牌局", nextHand: "下一副", language: "语言", rules: "规则", closeRules: "关闭规则", tableLabel: "两副牌 · 四位玩家 · 一张牌桌", deckCount: "108 张牌", yourHand: "你的手牌", sort: "整理", pass: "不出", play: "出牌", openingDeal: "首副牌", newDeal: "新一副", handComplete: "本副结束", hand: "第", card: "张", cards: "张", openLead: "新一轮", firstLead: "由你先出", leadPrompt: "选择牌型并出牌", nextTrick: "下一手将开启新一轮", readyNext: "准备开始下一副", yourTurnLead: "轮到你 · 任意牌型先出", yourTurnBeat: "轮到你 · 压牌或不出", thinking: "{name} 正在思考", hasLead: "{name} 持先", played: "{name} 已出牌", yourTeam: "我方", opponents: "对方", you: "你", west: "西家", partner: "对家", east: "东家", upstream: "上游", first: "第1", second: "第2", third: "第3", fourth: "第4 · 下游",
+          rulesTitle: "牌桌规则", rulesSubtitle: "掼蛋练习局简要说明", ruleDealTitle: "搭档与发牌", ruleDeal: "四位玩家相对而坐的两人为搭档。使用两副牌，每人发27张。", rulePlaysTitle: "出牌组合", rulePlays: "可先出单张、对子、三同张、三连对、顺子、三带二或二连三。其他玩家须用同类型更大的牌压制，或选择不出。", ruleBombsTitle: "炸弹", ruleBombs: "四张及以上同点数牌可压制普通牌型。五张同花顺可压五张及以下的炸弹；四张大小王组成的天王炸最大。", ruleLevelTitle: "级牌", ruleLevel: "当前级牌的红桃可作逢人配，代替任意点数的花色牌。级牌大于A，小王和大王更大。", ruleWinTitle: "胜负与升级", ruleWin: "一方两人先后出完手牌即获胜。若本方获得上游和二游升3级；上游和三游升2级；否则升1级。打过A级获胜。", rulesNote: "这是与三位基础AI对手进行的单人练习局，未包含进贡及竞赛变体。规则参考：", rulesSource: "维基百科：掼蛋",
+          smallJoker: "小王", bigJoker: "大王", wildCard: "逢人配", comboSingle: "单张", comboPair: "对子", comboTriple: "三同张", comboThreePairs: "三连对", comboConsecutiveTriples: "二连三", comboFullHouse: "三带二", comboStraight: "顺子", comboStraightFlush: "同花顺", comboBomb: "{count}张炸弹", comboJokerBomb: "天王炸",
+          statusOpening: "由你先出。请选择任意有效牌型。", statusOpeningOther: "{name} 先出牌。", statusSelect: "选择牌后点击出牌；再次点击可取消选择。", statusInvalid: "选择的牌不构成有效牌型。", statusCannotBeat: "这手牌无法压过当前牌型。", statusPassed: "你选择了不出。", comboSelected: "已选：{combo}", noCurrentPlay: "这手牌无法压过当前牌型", passed: "不出", finishes: "出完手牌", reports: "报牌：还剩{count}张", out: "已出完", leads: "{name} 获得出牌权", takesHand: "赢得本副", advanceOne: "级", advanceMany: "级", reachesA: " · 已到A级", gameWinner: "{team}已在A级获胜！请开始新牌局。", handResult: "{team}{takesHand} · {level}升{count}{unit}{reached}", yourTeamWins: "我方", otherTeamWins: "对方", finishPlace: "{name}{place}", secondFinish: "获得第二名", thirdFinish: "获得第三名",
+          review: "复盘", demo: "演示", stopDemo: "停止演示", demoLabel: "AI演示", reviewTitle: "牌局复盘", reviewSubtitle: "本地游戏AI逐手分析", reviewDisclosure: "由规则型AI根据已记录的出牌和可用牌型进行分析，不调用外部模型。", closeReview: "关闭复盘", reviewSummary: "第{hand}副 · 已分析{count}个决策", reviewEmpty: "暂无可复盘的出牌", reviewEmptyBody: "进行几轮后，出牌记录会显示在这里。", reviewPlayed: "{name}出了{combo}", reviewPassed: "{name}选择不出", reviewStrong: "出色选择", reviewGood: "好选择", reviewCaution: "可以改进", reviewNeutral: "视情况而定", reviewPartnerPass: "克制得当：对家持有我方出牌权，此时不出保留了对家的控制权。", reviewNoResponse: "不出合理：牌型搜索没有在这手牌中找到能压过{combo}的合法组合。", reviewMissedBlock: "可以改进：牌型搜索找到可压过{name}{previous}的{combo}；不出让对方继续掌控牌局。", reviewPassOption: "视情况而定：虽然有合法牌型可接，但不出保留了手牌。也要留意对方剩余张数。", reviewBomb: "风险较高：用{combo}压普通牌型会消耗强力回应。除非需要拦截或即将出完，否则可考虑保留。", reviewPartnerOver: "注意：你压过了对家的{previous}。不出可能让对家继续掌控牌局。", reviewLowerResponse: "可以改进：更小的{combo}也能压过这手牌，保留更大的牌。", reviewShed: "好选择：一次出掉{count}张牌，且没有消耗炸弹。", reviewHighSingle: "风险较高：大点数单张容易被压，也会让手牌更零散。", reviewSound: "稳妥出牌：这手合法的{combo}拿下了牌权，没有使用过强的回应。", demoStarted: "演示模式已开启，AI将自动打四家。选择“停止演示”即可接手。", demoStopped: "演示已停止，现在由你出牌。", demoPlay: "{name}选择{combo} · {cards}。{reason}", demoPass: "{name}不出 · {reason}", demoReasonLead: "先出{combo}，一次减少{count}张手牌。", demoReasonBeat: "用{combo}压过{previous}，保留更强的回应。", demoReasonBomb: "没有普通牌型可压制当前出牌，因此使用{combo}。", demoReasonPass: "牌型搜索没有找到能压过{combo}的合法组合。",
+          ratingPass: "不出", ratingPlay: "出牌", moveNumber: "第{count}手"
+        }
+      };
+      let language = localStorage.getItem("guandan-language") === "zh" ? "zh" : "en";
+      let statusState = { key: "statusSelect", args: {} };
+      function t(key, args = {}) {
+        const template = messages[language][key] || messages.en[key] || key;
+        return template.replace(/\{(\w+)\}/g, (_, name) => args[name] ?? "");
+      }
+      function applyLanguage() {
+        document.documentElement.lang = language === "zh" ? "zh-Hans" : "en";
+        document.title = t("pageTitle");
+        $("brandName").textContent = language === "zh" ? "掼蛋" : "Guandan";
+        $("tableWrap").setAttribute("aria-label", language === "zh" ? "掼蛋牌桌" : "Guandan game table");
+        $("sortButton").title = language === "zh" ? "整理手牌" : "Sort your hand";
+        $("languageSelect").value = language;
+        document.querySelectorAll("[data-i18n]").forEach((element) => { element.textContent = t(element.dataset.i18n); });
+        document.querySelectorAll("[data-i18n-aria]").forEach((element) => { element.setAttribute("aria-label", t(element.dataset.i18nAria)); });
+        $("languageSelect").setAttribute("aria-label", t("language"));
+        $("languageSelect").parentElement.title = t("language");
+        $("helpButton").setAttribute("aria-label", t("rules"));
+        $("helpButton").title = t("rules");
+        $("closeHelp").setAttribute("aria-label", t("closeRules"));
+        if (state) render();
+        setStatus(statusState.key, statusState.args);
+        $("closeReview").setAttribute("aria-label", t("closeReview"));
+        if ($("reviewDrawer").classList.contains("open")) renderReview();
+        if (announcementState && $("announcement").classList.contains("show")) $("announcement").textContent = t(announcementState.key, resolveMessageArgs(announcementState.args));
+      }
+      const ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+      const rankValue = Object.fromEntries(ranks.map((rank, index) => [rank, index + 2]));
+      const rankNames = Object.fromEntries(Object.entries(rankValue).map(([rank, value]) => [value, rank]));
+      const seats = ["You", "West", "Partner", "East"];
+      const faces = ["♙", "♜", "♕", "♞"];
+      const suitGlyph = { "♠": "♠", "♥": "♥", "♣": "♣", "♦": "♦" };
+      const straightRuns = [];
+      for (let start = 2; start <= 10; start++) straightRuns.push([start, start + 1, start + 2, start + 3, start + 4]);
+      straightRuns.push([14, 2, 3, 4, 5]);
+
+      let state;
+      let lastReview = null;
+      let selected = new Set();
+      let botTimer;
+      let demoMode = false;
+      let announcementState = null;
+      let announcementTimer;
+      const $ = (id) => document.getElementById(id);
+
+      function makeDeck() {
+        const deck = [];
+        for (let pack = 0; pack < 2; pack++) {
+          for (const suit of suits) for (const rank of ranks) deck.push({ id: `${pack}-${suit}-${rank}`, rank, suit });
+          deck.push({ id: `${pack}-SJ`, rank: "SJ", suit: "J", joker: true });
+          deck.push({ id: `${pack}-BJ`, rank: "BJ", suit: "J", joker: true });
+        }
+        return deck;
+      }
+      function shuffle(deck) {
+        for (let index = deck.length - 1; index > 0; index--) {
+          const swap = Math.floor(Math.random() * (index + 1));
+          [deck[index], deck[swap]] = [deck[swap], deck[index]];
+        }
+        return deck;
+      }
+      function newGame(keepLevel = false) {
+        clearTimeout(botTimer);
+        if (state?.history?.length) lastReview = { level: state.level, handNumber: state.handNumber, history: state.history.slice(), completed: state.roundOver };
+        selected.clear();
+        const level = keepLevel && state ? state.level : "2";
+        state = {
+          level, handNumber: keepLevel && state ? state.handNumber + 1 : 1,
+          players: [[], [], [], []], finished: [], current: 0, leader: 0,
+          trick: null, passes: 0, trickCards: [], trickHistory: [], history: [], roundOver: false, message: "", animateDeal: true
+        };
+        const deck = shuffle(makeDeck());
+        deck.forEach((card, index) => state.players[index % 4].push(card));
+        state.players.forEach(sortHand);
+        state.current = state.leader = Math.floor(Math.random() * 4);
+        if (state.current !== 0 || demoMode) scheduleBot();
+        render();
+        setStatus(state.current === 0 ? "statusOpening" : "statusOpeningOther", { seat: state.current });
+      }
+      function sortHand(hand) {
+        hand.sort((a, b) => {
+          const av = cardValue(a, state?.level || "2");
+          const bv = cardValue(b, state?.level || "2");
+          return av - bv || suits.indexOf(a.suit) - suits.indexOf(b.suit) || a.id.localeCompare(b.id);
+        });
+      }
+      function cardValue(card, level) {
+        if (card.rank === "SJ") return 16;
+        if (card.rank === "BJ") return 17;
+        return card.rank === level ? 15 : rankValue[card.rank];
+      }
+      function isWild(card, level = state.level) { return !card.joker && card.rank === level && card.suit === "♥"; }
+      function displayRank(card) { return card.rank === "SJ" ? t("smallJoker") : card.rank === "BJ" ? t("bigJoker") : card.rank; }
+      function displaySuit(card) { return card.joker ? "" : card.suit; }
+      function seatName(seat) { return t(["you", "west", "partner", "east"][seat]); }
+      function comboName(combo) {
+        if (combo.type === "bomb") return t("comboBomb", { count: combo.size });
+        const keys = { single: "comboSingle", pair: "comboPair", triple: "comboTriple", threePairs: "comboThreePairs", consecutiveTriples: "comboConsecutiveTriples", fullHouse: "comboFullHouse", straight: "comboStraight", straightFlush: "comboStraightFlush", jokerBomb: "comboJokerBomb" };
+        return t(keys[combo.type] || combo.type);
+      }
+
+      function evaluatePlain(cards) {
+        const count = cards.length;
+        if (!count || count > 8) return null;
+        const values = cards.map((card) => card.value).sort((a, b) => a - b);
+        const counts = new Map();
+        values.forEach((value) => counts.set(value, (counts.get(value) || 0) + 1));
+        const groups = [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+        const sameSuit = cards.every((card) => !card.joker && card.suit === cards[0].suit);
+        const allSame = groups.length === 1;
+        if (count === 4 && values.includes(16) && values.includes(17) && values.filter((v) => v === 16).length === 2 && values.filter((v) => v === 17).length === 2) {
+          return { type: "jokerBomb", size: 4, strength: 1000, label: t("comboJokerBomb") };
+        }
+        if (count >= 4 && allSame) return { type: "bomb", size: count, strength: 300 + count * 20 + values[0], label: t("comboBomb", { count }) };
+        if (count === 5) {
+          const run = straightRuns.find((candidate) => candidate.every((value) => values.includes(value)));
+          if (sameSuit && run) return { type: "straightFlush", size: 5, strength: 500 + Math.max(...run), label: t("comboStraightFlush") };
+          if (run) return { type: "straight", size: 5, strength: Math.max(...run), label: t("comboStraight") };
+          if (groups[0]?.[1] === 3 && groups[1]?.[1] === 2) return { type: "fullHouse", size: 5, strength: groups[0][0], label: t("comboFullHouse") };
+        }
+        if (count === 6 && groups.length === 3 && groups.every((group) => group[1] === 2)) {
+          const pairValues = groups.map((group) => group[0]).sort((a, b) => a - b);
+          if (pairValues[2] - pairValues[0] === 2 && pairValues[1] - pairValues[0] === 1) return { type: "threePairs", size: 6, strength: pairValues[2], label: t("comboThreePairs") };
+        }
+        if (count === 6 && groups.length === 2 && groups.every((group) => group[1] === 3)) {
+          const tripleValues = groups.map((group) => group[0]).sort((a, b) => a - b);
+          if (tripleValues[1] - tripleValues[0] === 1) return { type: "consecutiveTriples", size: 6, strength: tripleValues[1], label: t("comboConsecutiveTriples") };
+        }
+        if (count === 1) return { type: "single", size: 1, strength: values[0], label: t("comboSingle") };
+        if (count === 2 && groups.length === 1) return { type: "pair", size: 2, strength: values[0], label: t("comboPair") };
+        if (count === 3 && groups.length === 1) return { type: "triple", size: 3, strength: values[0], label: t("comboTriple") };
+        return null;
+      }
+      function evaluate(cards, level = state.level) {
+        if (!cards.length || cards.length > 8) return null;
+        const wilds = cards.filter((card) => isWild(card, level));
+        const naturals = cards.filter((card) => !isWild(card, level)).map((card) => ({ ...card, value: cardValue(card, level) }));
+        let best = evaluatePlain(naturals);
+        const assign = (index, concrete) => {
+          if (index === wilds.length) {
+            const result = evaluatePlain(concrete);
+            if (result && (!best || result.strength > best.strength)) best = result;
+            return;
+          }
+          for (const value of Object.values(rankValue)) {
+            for (const suit of suits) assign(index + 1, [...concrete, { id: wilds[index].id, value, suit, joker: false }]);
+          }
+          assign(index + 1, [...concrete, { id: wilds[index].id, value: 15, suit: "♠", joker: false }]);
+        };
+        if (wilds.length) assign(0, naturals);
+        return best;
+      }
+      function beats(candidate, previous) {
+        if (!previous) return true;
+        if (candidate.type === "jokerBomb") return previous.type !== "jokerBomb";
+        if (previous.type === "jokerBomb") return false;
+        if (candidate.type === "bomb") {
+          if (previous.type === "straightFlush") return candidate.size > 5;
+          if (previous.type === "bomb") return candidate.size > previous.size || (candidate.size === previous.size && candidate.strength > previous.strength);
+          return true;
+        }
+        if (candidate.type === "straightFlush") {
+          if (previous.type === "bomb") return previous.size <= 5;
+          if (previous.type === "straightFlush") return candidate.strength > previous.strength;
+          return true;
+        }
+        return candidate.type === previous.type && candidate.size === previous.size && candidate.strength > previous.strength;
+      }
+
+      function renderCard(card, selectable = false, index = 0) {
+        const isRed = card.suit === "♥" || card.suit === "♦" || card.rank === "BJ";
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `playing-card${isRed ? " red" : ""}${card.joker ? " joker" : ""}${isWild(card) ? " wild" : ""}${selectable && selected.has(card.id) ? " selected" : ""}${selectable && state.animateDeal ? " deal" : ""}`;
+        button.style.animationDelay = `${Math.min(index, 16) * 12}ms`;
+        button.setAttribute("aria-label", `${displayRank(card)} ${displaySuit(card)}${isWild(card) ? `, ${t("wildCard")}` : ""}`);
+        if (selectable) button.addEventListener("click", () => toggleCard(card.id));
+        const corner = document.createElement("span");
+        corner.className = "corner";
+        corner.innerHTML = `<span>${displayRank(card)}</span><span class="suit">${displaySuit(card)}</span>`;
+        const center = document.createElement("span");
+        center.className = "card-center";
+        center.textContent = card.joker ? (card.rank === "SJ" ? t("smallJoker") : t("bigJoker")) : suitGlyph[card.suit];
+        button.append(corner, center);
+        return button;
+      }
+      function render() {
+        $("levelValue").textContent = state.level;
+        const roundStatus = state.roundOver ? "handComplete" : state.handNumber === 1 ? "openingDeal" : "newDeal";
+        $("roundLabel").textContent = language === "zh" ? `第${state.handNumber}副 · ${t(roundStatus)}` : `Hand ${state.handNumber} · ${t(roundStatus)}`;
+        $("handCount").textContent = language === "zh" ? `${state.players[0].length}张` : `${state.players[0].length} ${state.players[0].length === 1 ? t("card") : t("cards")}`;
+        $("newGameButton").textContent = t(state.roundOver && state.level !== "A" ? "nextHand" : "newGame");
+        const handEl = $("hand");
+        handEl.replaceChildren();
+        state.players[0].forEach((card, index) => handEl.append(renderCard(card, true, index)));
+        state.animateDeal = false;
+        for (let seat = 0; seat < 4; seat++) {
+          const element = $(`seat-${seat}`);
+          const place = state.finished.indexOf(seat);
+          element.className = `seat seat-${["south", "west", "north", "east"][seat]}${state.current === seat && !state.roundOver ? " active" : ""}${seat === 2 ? " partner" : ""}${place >= 0 ? " done" : ""}`;
+          const left = state.players[seat].length;
+          const label = place === 0 ? `${t("first")} · ${t("upstream")}` : place === 1 ? t("second") : place === 2 ? t("third") : place === 3 ? t("fourth") : language === "zh" ? `${left}张` : `${left} ${t("cards")}`;
+          element.innerHTML = `<div class="avatar">${faces[seat]}</div><div class="seat-copy"><div class="seat-name">${seatName(seat)}</div><div class="seat-meta">${t(seat % 2 === 0 ? "yourTeam" : "opponents")} · <span class="seat-count">${label}</span></div></div>`;
+        }
+        const trickEl = $("trickCards");
+        trickEl.replaceChildren();
+        state.trickHistory.forEach((play, index) => {
+          const group = document.createElement("div");
+          group.className = `trick-play${index === state.trickHistory.length - 1 ? " latest" : ""}`;
+          const label = document.createElement("span");
+          label.className = "trick-play-label";
+          label.textContent = seatName(play.seat);
+          group.append(label);
+          if (play.passed) {
+            const passLabel = document.createElement("span");
+            passLabel.className = "trick-pass";
+            passLabel.textContent = t("passed");
+            group.append(passLabel);
+          } else {
+            const groupCards = document.createElement("div");
+            groupCards.className = "trick-play-cards";
+            play.cards.forEach((card, cardIndex) => groupCards.append(renderCard(card, false, cardIndex)));
+            group.append(groupCards);
+          }
+          trickEl.append(group);
+        });
+        if (state.roundOver) {
+          $("trickCaption").textContent = t("handComplete");
+          $("trickNote").textContent = t(state.messageKey, resolveMessageArgs(state.messageArgs));
+          $("turnMessage").textContent = t("readyNext");
+        } else if (state.trick) {
+          $("trickCaption").textContent = language === "zh" ? `本轮出牌 · ${state.trickHistory.length}手` : `This trick · ${state.trickHistory.length} plays`;
+          $("trickNote").textContent = comboName(state.trick.combo);
+          $("turnMessage").textContent = state.current === 0 ? t("yourTurnBeat") : t("thinking", { name: seatName(state.current) });
+        } else {
+          $("trickCaption").textContent = state.trickHistory.length ? (language === "zh" ? `上轮出牌 · ${state.trickHistory.length}手` : `Last trick · ${state.trickHistory.length} plays`) : t("openLead");
+          $("trickNote").textContent = state.current === 0 ? t("leadPrompt") : t("nextTrick");
+          $("turnMessage").textContent = state.current === 0 ? t("yourTurnLead") : t("hasLead", { name: seatName(state.current) });
+        }
+        const isHuman = state.current === 0 && !state.roundOver && !demoMode;
+        $("playButton").disabled = !isHuman || selected.size === 0;
+        $("passButton").disabled = !isHuman || !state.trick;
+        $("sortButton").disabled = !isHuman;
+        $("demoButton").textContent = t(demoMode ? "stopDemo" : "demo");
+        $("demoButton").setAttribute("aria-pressed", String(demoMode));
+        $("demoIndicator").hidden = !demoMode;
+      }
+      function toggleCard(cardId) {
+        if (state.current !== 0 || state.roundOver || demoMode) return;
+        if (selected.has(cardId)) selected.delete(cardId);
+        else selected.add(cardId);
+        render();
+        const cards = state.players[0].filter((card) => selected.has(card.id));
+        if (cards.length) {
+          const combo = evaluate(cards);
+          setStatus(combo ? (state.trick && !beats(combo, state.trick.combo) ? "noCurrentPlay" : "comboSelected") : "statusInvalid", { comboInfo: combo });
+        } else setStatus("statusSelect");
+      }
+      function setStatus(key, args = {}) {
+        statusState = { key, args };
+        $("statusLine").textContent = t(key, resolveMessageArgs(args));
+      }
+      function resolveMessageArgs(args) {
+        const resolved = { ...args };
+        if (Number.isInteger(args.seat)) resolved.name = seatName(args.seat);
+        if (args.opponentSeat !== undefined) resolved.name = seatName(args.opponentSeat);
+        if (args.comboInfo) resolved.combo = comboName(args.comboInfo);
+        if (args.previousInfo) resolved.previous = comboName(args.previousInfo);
+        if (args.cardsInfo) resolved.cards = args.cardsInfo.map((card) => `${displayRank(card)}${displaySuit(card)}`).join(" · ");
+        if (args.reasonKey) resolved.reason = t(args.reasonKey, resolveMessageArgs(args.reasonArgs || {}));
+        if (args.placeKey) resolved.place = t(args.placeKey);
+        if (args.teamKey) resolved.team = t(args.teamKey);
+        if (args.nextLevel) {
+          resolved.unit = t(args.count === 1 ? "advanceOne" : "advanceMany");
+          resolved.takesHand = t("takesHand");
+          resolved.reached = args.nextLevel === "A" && args.level !== "A" ? t("reachesA") : "";
+        }
+        return resolved;
+      }
+      function announce(key, args = {}) {
+        const el = $("announcement");
+        announcementState = { key, args };
+        el.textContent = t(key, resolveMessageArgs(args));
+        el.classList.add("show");
+        clearTimeout(announcementTimer);
+        announcementTimer = setTimeout(() => el.classList.remove("show"), 1500);
+      }
+      function recordMove(kind, seat, cards = [], combo = null) {
+        const previous = state.trick ? {
+          seat: state.trick.seat,
+          combo: { ...state.trick.combo },
+          cards: state.trickCards.map((card) => ({ ...card }))
+        } : null;
+        state.history.push({
+          kind, seat, cards: cards.map((card) => ({ ...card })), combo: combo ? { ...combo } : null,
+          previous, handBefore: state.players[seat].map((card) => ({ ...card })),
+          countsBefore: state.players.map((hand) => hand.length), level: state.level
+        });
+      }
+      function playCards(seat, cards, combo) {
+        recordMove("play", seat, cards, combo);
+        const hand = state.players[seat];
+        const playedIds = new Set(cards.map((card) => card.id));
+        if (!state.trick) state.trickHistory = [];
+        state.trickHistory.push({ seat, cards: cards.map((card) => ({ ...card })), combo: { ...combo }, passed: false });
+        state.players[seat] = hand.filter((card) => !playedIds.has(card.id));
+        if (!state.trick) state.leader = seat;
+        state.trick = { seat, combo };
+        state.trickCards = cards;
+        state.passes = 0;
+        if (!state.players[seat].length && !state.finished.includes(seat)) {
+          state.finished.push(seat);
+          const placeKey = state.finished.length === 1 ? "upstream" : state.finished.length === 2 ? "secondFinish" : "thirdFinish";
+          announce("finishPlace", { seat, placeKey });
+        }
+        if (state.finished.length === 3) {
+          const last = [0, 1, 2, 3].find((player) => !state.finished.includes(player));
+          state.finished.push(last);
+          finishHand();
+          return;
+        }
+        if (state.players[seat].length <= 10) {
+          const remaining = state.players[seat].length;
+          announce(remaining ? "reports" : "out", remaining ? { count: remaining } : {});
+        }
+        state.current = nextActive(seat);
+        render();
+      }
+      function nextActive(from) {
+        for (let step = 1; step <= 4; step++) {
+          const seat = (from + step) % 4;
+          if (!state.finished.includes(seat)) return seat;
+        }
+        return from;
+      }
+      function pass(seat) {
+        if (!state.trick || state.current !== seat) return;
+        recordMove("pass", seat);
+        state.trickHistory.push({ seat, cards: [], combo: null, passed: true });
+        state.passes++;
+        const next = nextActive(seat);
+        if (state.passes >= 3 || next === state.trick.seat) {
+          const winner = state.trick.seat;
+          state.trick = null;
+          state.trickCards = [];
+          state.trickHistory = [];
+          state.passes = 0;
+          state.current = state.finished.includes(winner) ? nextActive(winner) : winner;
+          announce("leads", { seat: state.current });
+        } else state.current = next;
+        render();
+      }
+      function finishHand() {
+        state.roundOver = true;
+        const first = state.finished[0];
+        const second = state.finished[1];
+        const firstTeam = first % 2;
+        let advance = 1;
+        if (second % 2 === firstTeam) advance = 3;
+        else if (state.finished[2] % 2 === firstTeam) advance = 2;
+        const oldLevel = rankValue[state.level];
+        const nextLevelValue = Math.min(14, oldLevel + advance);
+        const nextLevel = rankNames[nextLevelValue];
+        state.nextLevel = nextLevel;
+        const teamKey = firstTeam === 0 ? "yourTeamWins" : "otherTeamWins";
+        state.messageKey = state.level === "A" ? "gameWinner" : "handResult";
+        state.messageArgs = state.level === "A" ? { teamKey } : { teamKey, level: state.level, count: advance, nextLevel };
+        render();
+        setStatus(state.messageKey, state.messageArgs);
+      }
+      function doPlay() {
+        if (state.current !== 0 || state.roundOver || demoMode || !selected.size) return;
+        const cards = state.players[0].filter((card) => selected.has(card.id));
+        const combo = evaluate(cards);
+        if (!combo) return setStatus("statusInvalid");
+        if (state.trick && !beats(combo, state.trick.combo)) return setStatus("statusCannotBeat");
+        selected.clear();
+        playCards(0, cards, combo);
+        if (!state.roundOver) scheduleBot();
+      }
+      function doPass() {
+        if (state.current !== 0 || !state.trick || state.roundOver || demoMode) return;
+        selected.clear();
+        pass(0);
+        setStatus("statusPassed");
+        scheduleBot();
+      }
+      function scheduleBot() {
+        clearTimeout(botTimer);
+        if (state.roundOver || (state.current === 0 && !demoMode)) return;
+        botTimer = setTimeout(botTurn, 650 + Math.random() * 500);
+      }
+      function candidatePlays(hand, level = state.level) {
+        const byRank = new Map();
+        for (const card of hand) {
+          if (card.joker) continue;
+          const rank = card.rank;
+          if (!byRank.has(rank)) byRank.set(rank, []);
+          byRank.get(rank).push(card);
+        }
+        const candidates = [];
+        const add = (cards) => { if (cards.length && !candidates.some((candidate) => sameIds(candidate, cards))) candidates.push(cards); };
+        hand.forEach((card) => add([card]));
+        const rankEntries = [...byRank.entries()];
+        for (const [, cards] of rankEntries) {
+          if (cards.length >= 2) add(cards.slice(0, 2));
+          if (cards.length >= 3) add(cards.slice(0, 3));
+          for (let size = 4; size <= Math.min(8, cards.length); size++) add(cards.slice(0, size));
+        }
+        const groups = rankEntries.filter(([, cards]) => cards.length >= 2);
+        for (const [rank, triple] of rankEntries.filter(([, cards]) => cards.length >= 3)) {
+          for (const [otherRank, pair] of groups) if (rank !== otherRank) add([...triple.slice(0, 3), ...pair.slice(0, 2)]);
+        }
+        const combinations = (items, size, start = 0, chosen = [], result = []) => {
+          if (chosen.length === size) { result.push(chosen.slice()); return result; }
+          for (let i = start; i <= items.length - (size - chosen.length); i++) combinations(items, size, i + 1, [...chosen, items[i]], result);
+          return result;
+        };
+        const pairGroups = groups.map(([, cards]) => cards.slice(0, 2));
+        for (const trio of combinations(pairGroups, 3)) add(trio.flat());
+        const tripleGroups = rankEntries.filter(([, cards]) => cards.length >= 3).map(([rank, cards]) => ({ rank: rankValue[rank], cards: cards.slice(0, 3) })).sort((a, b) => a.rank - b.rank);
+        for (let i = 0; i < tripleGroups.length; i++) {
+          const pair = tripleGroups.find((group) => group.rank === tripleGroups[i].rank + 1);
+          if (pair) add([...tripleGroups[i].cards, ...pair.cards]);
+        }
+        const rankCards = (rank) => byRank.get(rankNames[rank]) || [];
+        for (const run of straightRuns) {
+          const choices = run.map(rankCards);
+          if (choices.every((cards) => cards.length)) add(choices.map((cards) => cards[0]));
+        }
+        for (const suit of suits) {
+          const suited = hand.filter((card) => card.suit === suit && !card.joker);
+          if (suited.length >= 5) add(suited.slice(0, 5));
+          for (const run of straightRuns) {
+            const straight = run.map((value) => suited.find((card) => rankValue[card.rank] === value));
+            if (straight.every(Boolean)) add(straight);
+          }
+        }
+        for (const [, cards] of rankEntries) {
+          for (let size = 4; size <= Math.min(8, cards.length); size++) add(cards.slice(0, size));
+        }
+        if (hand.filter((card) => card.rank === "SJ").length >= 2 && hand.filter((card) => card.rank === "BJ").length >= 2) {
+          add([...hand.filter((card) => card.rank === "SJ").slice(0, 2), ...hand.filter((card) => card.rank === "BJ").slice(0, 2)]);
+        }
+        return candidates;
+      }
+      function sameIds(first, second) {
+        if (first.length !== second.length) return false;
+        const ids = new Set(first.map((card) => card.id));
+        return second.every((card) => ids.has(card.id));
+      }
+      function reviewAnalysis(move) {
+        const prior = move.previous;
+        const responses = prior ? candidatePlays(move.handBefore, move.level)
+          .map((cards) => ({ cards, combo: evaluate(cards, move.level) }))
+          .filter((play) => play.combo && beats(play.combo, prior.combo)) : [];
+        if (move.kind === "pass") {
+          if (prior && prior.seat % 2 === move.seat % 2) return { rating: "reviewGood", tone: "good", reason: t("reviewPartnerPass", { name: seatName(prior.seat) }) };
+          if (!responses.length) return { rating: "reviewGood", tone: "good", reason: t("reviewNoResponse", { combo: comboName(prior.combo) }) };
+          if (prior && move.countsBefore[prior.seat] <= 2) return { rating: "reviewCaution", tone: "caution", reason: t("reviewMissedBlock", { name: seatName(prior.seat), previous: comboName(prior.combo), combo: comboName(responses[0].combo) }) };
+          return { rating: "reviewNeutral", tone: "neutral", reason: t("reviewPassOption") };
+        }
+        if (move.combo.type === "bomb" && (!prior || !["bomb", "straightFlush"].includes(prior.combo.type))) return { rating: "reviewCaution", tone: "caution", reason: t("reviewBomb", { combo: comboName(move.combo) }) };
+        if (prior && prior.seat % 2 === move.seat % 2) return { rating: "reviewCaution", tone: "caution", reason: t("reviewPartnerOver", { previous: comboName(prior.combo) }) };
+        const lower = responses.filter((play) => play.combo.type === move.combo.type && play.combo.size === move.combo.size && play.combo.strength < move.combo.strength).sort((a, b) => b.combo.strength - a.combo.strength)[0];
+        if (lower) return { rating: "reviewCaution", tone: "caution", reason: t("reviewLowerResponse", { combo: comboName(move.combo) }) };
+        if (["bomb", "jokerBomb", "straightFlush"].includes(move.combo.type) && prior) return { rating: "reviewStrong", tone: "strong", reason: t("reviewSound", { combo: comboName(move.combo) }) };
+        if (move.cards.length >= 3) return { rating: "reviewGood", tone: "good", reason: t("reviewShed", { count: move.cards.length }) };
+        if (move.combo.type === "single" && move.combo.strength >= 14) return { rating: "reviewCaution", tone: "caution", reason: t("reviewHighSingle") };
+        return { rating: "reviewGood", tone: "good", reason: t("reviewSound", { combo: comboName(move.combo) }) };
+      }
+      function renderReview() {
+        const review = state?.history?.length ? { handNumber: state.handNumber, history: state.history, completed: state.roundOver } : lastReview;
+        const list = $("reviewList");
+        list.replaceChildren();
+        if (!review || !review.history.length) {
+          $("reviewSummary").textContent = "";
+          const empty = document.createElement("div");
+          empty.className = "review-empty";
+          empty.textContent = `${t("reviewEmpty")}\n${t("reviewEmptyBody")}`;
+          list.append(empty);
+          return;
+        }
+        $("reviewSummary").textContent = t("reviewSummary", { hand: review.handNumber, count: review.history.length });
+        review.history.forEach((move, index) => {
+          const analysis = reviewAnalysis(move);
+          const entry = document.createElement("article");
+          entry.className = `review-entry ${analysis.tone}`;
+          const head = document.createElement("div");
+          head.className = "review-entry-head";
+          const title = document.createElement("span");
+          title.className = "review-move-title";
+          title.textContent = `${t("moveNumber", { count: index + 1 })} · ${move.kind === "pass" ? t("reviewPassed", { name: seatName(move.seat) }) : t("reviewPlayed", { name: seatName(move.seat), combo: comboName(move.combo) })}`;
+          const badge = document.createElement("span");
+          badge.className = "review-badge";
+          badge.textContent = t(analysis.rating);
+          head.append(title, badge);
+          entry.append(head);
+          if (move.cards.length) {
+            const cards = document.createElement("div");
+            cards.className = "review-cards";
+            cards.textContent = move.cards.map((card) => `${displayRank(card)}${displaySuit(card)}`).join(" · ");
+            entry.append(cards);
+          }
+          const reason = document.createElement("p");
+          reason.className = "review-reason";
+          reason.textContent = analysis.reason;
+          entry.append(reason);
+          list.append(entry);
+        });
+      }
+      function botTurn() {
+        if (state.roundOver || (state.current === 0 && !demoMode)) return;
+        const seat = state.current;
+        const hand = state.players[seat];
+        const candidates = candidatePlays(hand).map((cards) => ({ cards, combo: evaluate(cards) })).filter((play) => play.combo);
+        const valid = candidates.filter((play) => !state.trick || beats(play.combo, state.trick.combo));
+        if (!valid.length) {
+          const previous = state.trick?.combo;
+          pass(seat);
+          if (demoMode && previous) setStatus("demoPass", { seat, comboInfo: previous, reasonKey: "demoReasonPass", reasonArgs: { comboInfo: previous } });
+          if (!state.roundOver) scheduleBot();
+          return;
+        }
+        const winning = valid.filter((play) => play.combo.type !== "bomb" && play.combo.type !== "jokerBomb" && play.combo.type !== "straightFlush");
+        const pool = winning.length ? winning : valid;
+        pool.sort((a, b) => a.cards.length - b.cards.length || a.combo.strength - b.combo.strength);
+        const play = state.trick ? pool[0] : pool.find((item) => item.cards.length > 1) || pool[0];
+        if (demoMode) {
+          const previous = state.trick?.combo;
+          const reasonKey = !previous ? "demoReasonLead" : ["bomb", "jokerBomb", "straightFlush"].includes(play.combo.type) ? "demoReasonBomb" : "demoReasonBeat";
+          const reasonArgs = reasonKey === "demoReasonLead" ? { comboInfo: play.combo, count: play.cards.length } : reasonKey === "demoReasonBeat" ? { previousInfo: previous, comboInfo: play.combo } : { comboInfo: play.combo };
+          setStatus("demoPlay", { seat, comboInfo: play.combo, cardsInfo: play.cards, reasonKey, reasonArgs });
+        }
+        playCards(seat, play.cards, play.combo);
+        if (!state.roundOver) scheduleBot();
+      }
+      function sortButton() {
+        sortHand(state.players[0]);
+        render();
+      }
+      function toggleDemo() {
+        demoMode = !demoMode;
+        selected.clear();
+        clearTimeout(botTimer);
+        render();
+        if (demoMode) {
+          setStatus("demoStarted");
+          scheduleBot();
+        } else setStatus("demoStopped");
+      }
+      $("playButton").addEventListener("click", doPlay);
+      $("passButton").addEventListener("click", doPass);
+      $("sortButton").addEventListener("click", sortButton);
+      $("demoButton").addEventListener("click", toggleDemo);
+      $("reviewButton").addEventListener("click", () => {
+        renderReview();
+        $("reviewDrawer").classList.add("open");
+      });
+      $("closeReview").addEventListener("click", () => $("reviewDrawer").classList.remove("open"));
+      $("reviewDrawer").addEventListener("click", (event) => { if (event.target === $("reviewDrawer")) $("reviewDrawer").classList.remove("open"); });
+      $("newGameButton").addEventListener("click", () => {
+        if (state.roundOver && state.level === "A") newGame(false);
+        else if (state.roundOver) {
+          state.level = state.nextLevel;
+          newGame(true);
+        } else newGame(false);
+      });
+      $("helpButton").addEventListener("click", () => $("helpDrawer").classList.add("open"));
+      $("closeHelp").addEventListener("click", () => $("helpDrawer").classList.remove("open"));
+      $("helpDrawer").addEventListener("click", (event) => { if (event.target === $("helpDrawer")) $("helpDrawer").classList.remove("open"); });
+      $("languageSelect").addEventListener("change", (event) => {
+        language = event.target.value === "zh" ? "zh" : "en";
+        localStorage.setItem("guandan-language", language);
+        applyLanguage();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          $("helpDrawer").classList.remove("open");
+          $("reviewDrawer").classList.remove("open");
+        }
+      });
+      applyLanguage();
+      newGame();
+    })();
+  </script>
+</body>
+</html>
