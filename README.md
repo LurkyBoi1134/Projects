@@ -8,7 +8,7 @@ Pages.
 
 | Folder | Description |
 | --- | --- |
-| [`Data_analysis_sales/`](./Data_analysis_sales/) | Exploratory analysis of grocery sales data and a self-contained HTML report. |
+| [`Data_analysis_sales/`](./Data_analysis_sales/) ([public report](https://lurkyboi1134.github.io/Projects/Data_analysis_sales/sales_findings.html)) | Exploratory analysis of grocery sales data and a self-contained HTML report. |
 | [`Floor_pulse/`](./Floor_pulse/) | A static prototype for discovering campus activities and connecting with people. |
 | [`Game_flight/`](./Game_flight/) | Skyward Run, a browser flight game. |
 | [`Game_guandan/`](./Game_guandan/) | A browser-based Guandan card game. |

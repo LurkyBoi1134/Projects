@@ -9,7 +9,8 @@ a portable HTML report.
 
 - `script/sales_analysis.py` performs the analysis.
 - `script/build_html_report.py` builds `sales_findings.html`.
-- `data/` holds the source CSV used for reproducible analysis.
+- `data/` holds the source CSV and [`data_model.md`](./data/data_model.md), a
+  proposed star-schema model with fact/dimension relationships.
 - `outputs/` receives generated tables, summaries, and charts.
 - `requirements.txt` lists the Python dependencies.
 
