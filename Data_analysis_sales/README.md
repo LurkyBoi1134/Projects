@@ -2,7 +2,7 @@
 
 Initial exploratory analysis of Kaggle's [Supermart Grocery Sales – Retail Analytics Dataset](https://www.kaggle.com/datasets/mohamedharris/supermart-grocery-sales-retail-analytics-dataset).
 
-[View the public sales findings report](https://lurkyboi1134.github.io/Projects/Data_analysis_sales/sales_findings.html).
+[View the public sales findings report](https://lurkyboi1134.github.io/Projects/Data_analysis_sales/sales_findings.html) · [Open the report file](./sales_findings.html).
 
 The source CSV is in `data/`. The dataset contains order-level grocery sales, including order date, category, subcategory, city, region, sales, discount, and profit. The data represents Tamil Nadu, India, and covers 2015–2018.
 

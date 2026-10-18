@@ -5,8 +5,8 @@ live activity feed, event cards, and lightweight interaction prompts.
 
 ## Preview
 
-Open `index.html` in a modern browser. The page is self-contained and does not
-require a build step or package installation.
+[Open `index.html`](./index.html) in a modern browser. The page is
+self-contained and does not require a build step or package installation.
 
 ## Files
 

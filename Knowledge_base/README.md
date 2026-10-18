@@ -5,8 +5,8 @@ and first-time learner runbook.
 
 ## Preview
 
-Open `cs61a.html` in a modern browser. It is a standalone HTML document and
-requires no build step or package installation.
+[Open the CS 61A guide](./cs61a.html) in a modern browser. It is a standalone
+HTML document and requires no build step or package installation.
 
 ## Files
 

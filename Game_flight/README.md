@@ -5,8 +5,8 @@ https://lurkyboi1134.github.io/Projects/Game_flight/.
 
 ## Preview
 
-Open `index.html` in a modern browser. The game is implemented as a standalone
-page and does not require a build step or package installation.
+[Open the game](./index.html) in a modern browser. It is a standalone page and
+does not require a build step or package installation.
 
 ## Files
 

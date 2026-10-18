@@ -8,11 +8,11 @@ Pages.
 
 | Folder | Description |
 | --- | --- |
-| [`Data_analysis_sales/`](./Data_analysis_sales/) ([public report](https://lurkyboi1134.github.io/Projects/Data_analysis_sales/sales_findings.html)) | Exploratory analysis of grocery sales data and a self-contained HTML report. |
-| [`Floor_pulse/`](./Floor_pulse/) | A static prototype for discovering campus activities and connecting with people. |
-| [`Game_flight/`](./Game_flight/) | Skyward Run, a browser flight game. |
-| [`Game_guandan/`](./Game_guandan/) | A browser-based Guandan card game. |
-| [`Knowledge_base/`](./Knowledge_base/) | A CS 61A first-time learner's field guide. |
+| [`Data_analysis_sales/`](./Data_analysis_sales/) | Exploratory sales analysis — [open HTML report](./Data_analysis_sales/sales_findings.html) ([public report](https://lurkyboi1134.github.io/Projects/Data_analysis_sales/sales_findings.html)). |
+| [`Floor_pulse/`](./Floor_pulse/) | Campus activity prototype — [open HTML page](./Floor_pulse/index.html). |
+| [`Game_flight/`](./Game_flight/) | Skyward Run — [open HTML game](./Game_flight/index.html). |
+| [`Game_guandan/`](./Game_guandan/) | Guandan card game — [open HTML game](./Game_guandan/index.html). |
+| [`Knowledge_base/`](./Knowledge_base/) | CS 61A learner's field guide — [open HTML guide](./Knowledge_base/cs61a.html). |
 
 Each project folder has its own `README.md`, `project.md`, and `.gitignore`.
 Check its README for project-specific run and preview instructions before
