@@ -7,7 +7,7 @@ The source CSV is in `data/`. The dataset contains order-level grocery sales, in
 ## Run
 
 ```bash
-.venv/bin/python sales_analysis.py
+.venv/bin/python script/sales_analysis.py
 ```
 
 The script writes summary tables, a text summary, and four charts to `outputs/`. Hyphenated order dates are interpreted as day-month-year; slash-formatted dates are parsed as month/day/year. The parser reports any failures in `outputs/analysis_summary.txt`.
@@ -15,7 +15,7 @@ The script writes summary tables, a text summary, and four charts to `outputs/`.
 Build the standalone HTML report after running the analysis:
 
 ```bash
-.venv/bin/python build_html_report.py
+.venv/bin/python script/build_html_report.py
 ```
 
 This writes `sales_findings.html` with the conclusion first, a clearly attributed data source, 10 source sample rows, the cleaning procedure, and the analysis. Charts are embedded, so the report can be opened or shared as a single file.

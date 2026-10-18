@@ -1,0 +1,18 @@
+# macOS and editor files
+.DS_Store
+.vscode/
+.idea/
+
+# Common local environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# JavaScript dependencies and build output
+node_modules/
+dist/
+build/

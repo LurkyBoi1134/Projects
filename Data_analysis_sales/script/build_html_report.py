@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 OUTPUTS = ROOT / "outputs"
 DESTINATION = ROOT / "sales_findings.html"
 DATA_PATH = ROOT / "data" / "Supermart Grocery Sales - Retail Analytics Dataset.csv"
