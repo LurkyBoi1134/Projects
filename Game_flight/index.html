@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#bce8e5">
+  <title>Skyward Run</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #153b46;
+      --muted: #53747a;
+      --paper: rgba(249, 255, 250, .88);
+      --line: rgba(21, 59, 70, .14);
+      --coral: #ed7257;
+      --lime: #d9f279;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+
+    body {
+      background: #05070b;
+      color: var(--ink);
+      font-family: "Avenir Next", Avenir, "Trebuchet MS", sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    button { color: inherit; font: inherit; }
+
+    .game {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 420px;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+    .topbar {
+      position: absolute;
+      z-index: 2;
+      top: max(18px, env(safe-area-inset-top));
+      left: max(20px, env(safe-area-inset-left));
+      right: max(20px, env(safe-area-inset-right));
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .brand { display: grid; gap: 3px; }
+    .brand-mark { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 800; letter-spacing: 1.6px; }
+    .brand-mark::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 4px rgba(237, 114, 87, .17); }
+    .brand-sub { padding-left: 18px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 1.3px; }
+
+    .stats { display: flex; gap: 8px; }
+    .stat {
+      min-width: 91px;
+      padding: 10px 13px 9px;
+      border: 1px solid rgba(255,255,255,.68);
+      border-radius: 7px;
+      background: var(--paper);
+      box-shadow: 0 5px 20px rgba(30, 91, 96, .08);
+      backdrop-filter: blur(10px);
+    }
+    .stat-label { display: block; margin-bottom: 3px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: 1.25px; }
+    .stat-value { font-size: 18px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+    .meter-track { height: 3px; margin-top: 7px; overflow: hidden; border-radius: 2px; background: rgba(21,59,70,.14); }
+    .meter-fill { width: 100%; height: 100%; border-radius: inherit; transition: width .18s linear; }
+    .meter-fill.oil { background: #9bad47; }
+    .meter-fill.ammo { background: #328f88; }
+    .meter-fill.low { background: var(--coral); }
+    .hull-dots { display: flex; gap: 5px; padding-top: 3px; }
+    .hull-dots i { width: 12px; height: 7px; border-radius: 2px; background: var(--coral); transform: skew(-18deg); }
+    .hull-dots i.off { background: #b6c9c3; }
+
+    .pause-button, .icon-button {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      margin-left: 2px;
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 7px;
+      background: var(--paper);
+      cursor: pointer;
+      pointer-events: auto;
+      transition: transform .16s ease, background .16s ease;
+    }
+    .pause-button:hover, .icon-button:hover { background: white; transform: translateY(-2px); }
+    .pause-button svg { width: 16px; height: 16px; }
+
+    .status-message {
+      position: absolute;
+      z-index: 2;
+      top: max(78px, calc(env(safe-area-inset-top) + 66px));
+      left: 50%;
+      max-width: calc(100vw - 32px);
+      padding: 8px 12px;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 5px;
+      background: rgba(9, 20, 25, .78);
+      color: #d9f279;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-align: center;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+    .status-message[hidden] { display: none; }
+
+    .bottomline {
+      position: absolute;
+      z-index: 2;
+      right: max(22px, env(safe-area-inset-right));
+      bottom: max(20px, env(safe-area-inset-bottom));
+      left: max(22px, env(safe-area-inset-left));
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+    .hint { color: #c1d5d1; font-size: 11px; font-weight: 700; letter-spacing: .35px; }
+    .hint kbd { display: inline-grid; min-width: 22px; height: 21px; margin: 0 2px; padding: 0 5px; place-items: center; border: 1px solid rgba(21,59,70,.2); border-bottom-width: 2px; border-radius: 4px; background: rgba(255,255,255,.5); font: inherit; font-size: 10px; }
+    .touch-controls { display: none; gap: 9px; pointer-events: auto; }
+    .touch-button {
+      display: grid;
+      width: 58px;
+      height: 54px;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.75);
+      border-radius: 8px;
+      background: rgba(249,255,250,.74);
+      box-shadow: 0 5px 16px rgba(30,91,96,.1);
+      touch-action: none;
+    }
+    .touch-button svg { width: 21px; height: 21px; }
+    .touch-button.fire { width: 66px; background: rgba(237,114,87,.92); color: white; border-color: rgba(255,255,255,.5); }
+    .touch-button:active { transform: scale(.95); }
+
+    .screen {
+      position: absolute;
+      z-index: 3;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 30px;
+      background: rgba(17, 62, 72, .13);
+      backdrop-filter: blur(3px);
+      animation: appear .3s ease both;
+    }
+    .screen[hidden] { display: none; }
+    .screen-content { max-width: 410px; text-align: center; animation: rise .45s cubic-bezier(.2,.8,.2,1) both; }
+    .eyebrow { margin: 0 0 13px; color: #f4fff1; font-size: 10px; font-weight: 800; letter-spacing: 2.3px; text-shadow: 0 1px 8px rgba(21,59,70,.2); }
+    h1 { margin: 0; color: #fffef4; font-size: clamp(43px, 8vw, 70px); font-weight: 900; line-height: .9; letter-spacing: -2px; text-shadow: 0 4px 0 rgba(21,59,70,.12), 0 10px 35px rgba(21,59,70,.2); }
+    .screen-copy { max-width: 325px; margin: 19px auto 25px; color: #f4fff1; font-size: 14px; font-weight: 600; line-height: 1.6; text-shadow: 0 1px 8px rgba(21,59,70,.22); }
+    .primary-button {
+      display: inline-flex;
+      min-width: 164px;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--lime);
+      color: #183f45;
+      box-shadow: 0 5px 0 #9dbd60, 0 12px 28px rgba(21,59,70,.2);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      transition: transform .14s ease, box-shadow .14s ease;
+    }
+    .primary-button:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #9dbd60, 0 15px 30px rgba(21,59,70,.2); }
+    .primary-button:active { transform: translateY(3px); box-shadow: 0 2px 0 #9dbd60; }
+    .primary-button svg { width: 17px; height: 17px; }
+    .screen-note { max-width: 350px; margin: 19px auto 0; color: rgba(244,255,241,.9); font-size: 10px; font-weight: 700; line-height: 1.5; letter-spacing: 1.2px; text-shadow: 0 1px 7px rgba(21,59,70,.2); }
+
+    @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 640px) {
+      .topbar { top: max(13px, env(safe-area-inset-top)); left: max(13px, env(safe-area-inset-left)); right: max(13px, env(safe-area-inset-right)); }
+      .topbar { flex-direction: column; align-items: stretch; gap: 7px; }
+      .brand-sub { font-size: 8px; }
+      .stats { width: 100%; justify-content: space-between; gap: 4px; }
+      .stat { min-width: 0; flex: 1 1 0; padding: 6px 5px; }
+      .stat-label { margin-bottom: 3px; font-size: 7px; letter-spacing: .7px; }
+      .stat-value { font-size: 13px; }
+      .meter-track { height: 2px; margin-top: 5px; }
+      .hull-dots { gap: 3px; }
+      .hull-dots i { width: 7px; height: 6px; }
+      .pause-button { width: 30px; height: 30px; flex: 0 0 30px; margin: 0; }
+      .status-message { top: max(102px, calc(env(safe-area-inset-top) + 89px)); }
+      .bottomline { right: max(13px, env(safe-area-inset-right)); bottom: max(15px, env(safe-area-inset-bottom)); left: max(13px, env(safe-area-inset-left)); }
+      .hint { display: none; }
+      .touch-controls { display: flex; }
+      .touch-controls { gap: 5px; }
+      .touch-button { width: 42px; height: 46px; }
+      .touch-button.fire { width: 50px; }
+      .screen-copy { font-size: 13px; }
+    }
+
+    @media (max-height: 520px) and (min-width: 641px) {
+      .topbar { top: 12px; }
+      .bottomline { bottom: 12px; }
+      h1 { font-size: 52px; }
+      .screen-copy { margin: 13px auto 18px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game" aria-label="Skyward Run flight game">
+    <canvas id="game-canvas" aria-label="Flight game playfield"></canvas>
+    <header class="topbar">
+      <div class="brand" aria-label="Skyward Run">
+        <div class="brand-mark">SKYWARD RUN</div>
+        <div class="brand-sub">FLIGHT SQUADRON · 07</div>
+      </div>
+      <div class="stats" aria-live="polite">
+        <div class="stat"><span class="stat-label">DISTANCE</span><span class="stat-value" id="distance">0000</span></div>
+        <div class="stat"><span class="stat-label">SCORE</span><span class="stat-value" id="score">000</span></div>
+        <div class="stat"><span class="stat-label">HULL</span><span class="hull-dots" id="hull"><i></i><i></i><i></i></span></div>
+        <div class="stat">
+          <span class="stat-label">OIL</span>
+          <span class="stat-value" id="oil-level">100%</span>
+          <div class="meter-track"><div class="meter-fill oil" id="oil-meter" role="progressbar" aria-label="Oil level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"></div></div>
+        </div>
+        <div class="stat">
+          <span class="stat-label">AMMO</span>
+          <span class="stat-value" id="ammo-level">800</span>
+          <div class="meter-track"><div class="meter-fill ammo" id="ammo-meter" role="progressbar" aria-label="Ammunition level" aria-valuemin="0" aria-valuemax="800" aria-valuenow="800"></div></div>
+        </div>
+        <button class="pause-button" id="pause-button" type="button" aria-label="Pause game" title="Pause (P)" hidden>
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6 4h3v12H6zM11 4h3v12h-3z"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="status-message" id="status-message" role="status" hidden></div>
+    <footer class="bottomline">
+      <div class="hint"><kbd>←</kbd><kbd>→</kbd> steer <span aria-hidden="true">·</span> <kbd>↑</kbd><kbd>↓</kbd> fly <span aria-hidden="true">·</span> <kbd>SPACE</kbd> fire <span aria-hidden="true">·</span> <kbd>P</kbd> pause</div>
+      <div class="touch-controls" aria-label="Touch controls">
+        <button class="touch-button" type="button" data-control="forward" aria-label="Move forward">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
+        </button>
+        <button class="touch-button" type="button" data-control="backward" aria-label="Move backward">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="touch-button" type="button" data-control="left" aria-label="Move left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button class="touch-button" type="button" data-control="right" aria-label="Move right">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+        <button class="touch-button fire" type="button" data-control="fire" aria-label="Fire">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg>
+        </button>
+      </div>
+    </footer>
+    <section class="screen" id="screen" aria-labelledby="screen-title">
+      <div class="screen-content">
+        <p class="eyebrow" id="screen-eyebrow">A CLEAR SKY NEVER LASTS</p>
+        <h1 id="screen-title">SKYWARD<br>RUN</h1>
+        <p class="screen-copy" id="screen-copy">Take the controls. Weave through the weather, clear a path, and see how far your flight can go.</p>
+        <button class="primary-button" id="start-button" type="button">
+          <span id="button-label">START FLIGHT</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+        </button>
+        <p class="screen-note" id="screen-note">ARROWS / WASD TO FLY · SPACE TO FIRE</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.querySelector("#game-canvas");
+      const ctx = canvas.getContext("2d");
+      const screen = document.querySelector("#screen");
+      const startButton = document.querySelector("#start-button");
+      const pauseButton = document.querySelector("#pause-button");
+      const scoreDisplay = document.querySelector("#score");
+      const distanceDisplay = document.querySelector("#distance");
+      const hullDisplay = document.querySelector("#hull");
+      const oilLevelDisplay = document.querySelector("#oil-level");
+      const oilMeter = document.querySelector("#oil-meter");
+      const ammoLevelDisplay = document.querySelector("#ammo-level");
+      const ammoMeter = document.querySelector("#ammo-meter");
+      const statusMessage = document.querySelector("#status-message");
+      const controls = { left: false, right: false, forward: false, backward: false, fire: false };
+      const keys = new Set();
+      const obstacleColors = ["#ea7758", "#d9944f", "#617b72", "#ddbc69"];
+      let width = 0;
+      let height = 0;
+      let pixelRatio = 1;
+      let state = "ready";
+      let lastTime = 0;
+      let elapsed = 0;
+      let score = 0;
+      let distance = 0;
+      let hull = 3;
+      let oil = 100;
+      let ammo = 800;
+      const ammoCapacity = 800;
+      let spawnIn = 0.8;
+      let shotIn = 0;
+      let hitSoundIn = 0;
+      let rapidFireRemaining = 0;
+      let statusMessageRemaining = 0;
+      let damageFlash = 0;
+      let shake = 0;
+      let audioContext;
+      let scenery = [];
+      let obstacles = [];
+      let pickups = [];
+      let shots = [];
+      let particles = [];
+      const plane = { x: 0, tilt: 0, invulnerable: 0 };
+
+      function resize() {
+        const bounds = canvas.getBoundingClientRect();
+        width = bounds.width;
+        height = bounds.height;
+        pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(width * pixelRatio);
+        canvas.height = Math.round(height * pixelRatio);
+        ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+        if (!plane.x) plane.x = width / 2;
+        plane.x = clamp(plane.x, 36, width - 36);
+        if (!plane.y) plane.y = height - Math.max(105, height * .2);
+        plane.y = clamp(plane.y, 45, height - 45);
+        makeScenery();
+        draw();
+      }
+
+      function makeScenery() {
+        scenery = Array.from({ length: Math.floor(width * height / 4200) }, () => ({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          size: 0.5 + Math.random() * 1.4,
+          depth: 0.25 + Math.random() * 0.75,
+          phase: Math.random() * Math.PI * 2
+        }));
+      }
+
+      function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+      function random(min, max) { return min + Math.random() * (max - min); }
+
+      function playSound(kind) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        audioContext ||= new AudioContextClass();
+        if (audioContext.state === "suspended") audioContext.resume();
+
+        const sounds = {
+          hit: { start: 260, end: 85, duration: .13, volume: .065, type: "triangle" },
+          damage: { start: 170, end: 48, duration: .24, volume: .09, type: "sawtooth" },
+          pickup: { start: 540, end: 950, duration: .16, volume: .055, type: "sine" }
+        };
+        const sound = sounds[kind];
+        const now = audioContext.currentTime;
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.type = sound.type;
+        oscillator.frequency.setValueAtTime(sound.start, now);
+        oscillator.frequency.exponentialRampToValueAtTime(sound.end, now + sound.duration);
+        gain.gain.setValueAtTime(sound.volume, now);
+        gain.gain.exponentialRampToValueAtTime(.001, now + sound.duration);
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.start(now);
+        oscillator.stop(now + sound.duration);
+      }
+
+      function roundRect(x, y, w, h, radius) {
+        const r = Math.min(radius, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+      }
+
+      function drawBackground(dt) {
+        ctx.fillStyle = "#05070b";
+        ctx.fillRect(0, 0, width, height);
+
+        scenery.forEach((item) => {
+          if (state === "playing") item.y += (18 + distance * .008) * item.depth * dt;
+          if (item.y > height + 2) {
+            item.y = -2;
+            item.x = random(0, width);
+          }
+          const twinkle = 0.72 + Math.sin(elapsed * 1.7 + item.phase) * 0.22;
+          ctx.fillStyle = `rgba(220,240,255,${(0.3 + item.depth * 0.55) * twinkle})`;
+          ctx.beginPath();
+          ctx.arc(item.x, item.y, item.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        const vignette = ctx.createLinearGradient(0, 0, 0, height);
+        vignette.addColorStop(0, "rgba(0,0,0,.12)");
+        vignette.addColorStop(.22, "rgba(0,0,0,0)");
+        vignette.addColorStop(.75, "rgba(0,0,0,0)");
+        vignette.addColorStop(1, "rgba(0,0,0,.3)");
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function drawPlane() {
+        const y = plane.y;
+        plane.y = y;
+        ctx.save();
+        ctx.translate(plane.x, y);
+        ctx.rotate(plane.tilt * .18);
+        if (plane.invulnerable > 0 && Math.floor(elapsed * 15) % 2 === 0) ctx.globalAlpha = .48;
+
+        ctx.fillStyle = "rgba(150,190,200,.13)";
+        ctx.beginPath();
+        ctx.ellipse(0, 34, 43, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#3c4b53";
+        ctx.beginPath();
+        ctx.moveTo(-7, 7); ctx.lineTo(-25, 14); ctx.lineTo(-21, 25); ctx.lineTo(-5, 18); ctx.closePath(); ctx.fill();
+        ctx.moveTo(7, 7); ctx.lineTo(25, 14); ctx.lineTo(21, 25); ctx.lineTo(5, 18); ctx.closePath(); ctx.fill();
+
+        ctx.fillStyle = "#71828a";
+        ctx.beginPath();
+        ctx.moveTo(0, -38); ctx.lineTo(7, -16); ctx.lineTo(42, 4); ctx.lineTo(45, 12);
+        ctx.lineTo(15, 6); ctx.lineTo(11, 19); ctx.lineTo(5, 28); ctx.lineTo(0, 24);
+        ctx.lineTo(-5, 28); ctx.lineTo(-11, 19); ctx.lineTo(-15, 6); ctx.lineTo(-45, 12);
+        ctx.lineTo(-42, 4); ctx.lineTo(-7, -16); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "#b7c7c8";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.strokeStyle = "rgba(222,235,228,.5)";
+        ctx.lineWidth = .8;
+        ctx.beginPath();
+        ctx.moveTo(-8, -12); ctx.lineTo(-15, 0); ctx.lineTo(-23, 4);
+        ctx.moveTo(8, -12); ctx.lineTo(15, 0); ctx.lineTo(23, 4);
+        ctx.moveTo(-15, 6); ctx.lineTo(-8, 9); ctx.lineTo(-5, 18);
+        ctx.moveTo(15, 6); ctx.lineTo(8, 9); ctx.lineTo(5, 18);
+        ctx.stroke();
+
+        const canopy = ctx.createLinearGradient(0, -25, 0, -3);
+        canopy.addColorStop(0, "#b5e2e4");
+        canopy.addColorStop(1, "#356271");
+        ctx.fillStyle = canopy;
+        ctx.beginPath();
+        ctx.moveTo(0, -27); ctx.lineTo(4.5, -17); ctx.lineTo(4, -5);
+        ctx.lineTo(0, -2); ctx.lineTo(-4, -5); ctx.lineTo(-4.5, -17); ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(234,250,238,.8)";
+        ctx.lineWidth = .8;
+        ctx.stroke();
+
+        ctx.fillStyle = "#26343b";
+        ctx.beginPath();
+        ctx.ellipse(-4, 24, 2.2, 3.2, 0, 0, Math.PI * 2);
+        ctx.ellipse(4, 24, 2.2, 3.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowColor = "#f09a5a";
+        ctx.shadowBlur = 7;
+        ctx.fillStyle = "#ffca83";
+        ctx.beginPath();
+        ctx.ellipse(-4, 25, 1.2, 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(4, 25, 1.2, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawObstacle(item) {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.rotate(item.rotation);
+        const r = item.radius;
+        ctx.fillStyle = "rgba(37,70,67,.17)";
+        ctx.beginPath(); ctx.ellipse(2, r * .8, r * .95, r * .29, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = obstacleColors[item.color];
+        ctx.beginPath();
+        for (let point = 0; point < 9; point++) {
+          const angle = point * Math.PI * 2 / 9;
+          const radius = r * (point % 2 === 0 ? 1 : .76) * (item.jagged[point] || 1);
+          const px = Math.cos(angle) * radius;
+          const py = Math.sin(angle) * radius;
+          if (point === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "rgba(255,245,209,.54)"; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = "rgba(255,244,211,.32)";
+        ctx.beginPath(); ctx.ellipse(-r * .22, -r * .2, r * .25, r * .14, -.6, 0, Math.PI * 2); ctx.fill();
+        if (item.hp > 1) {
+          ctx.fillStyle = "rgba(255,249,226,.82)";
+          ctx.font = `800 ${Math.max(10, r * .75)}px sans-serif`;
+          ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillText("✦", 0, 1);
+        }
+        ctx.restore();
+      }
+
+      function drawPickup(item) {
+        const color = item.type === "oil" ? "#d9f279" : "#6adbd0";
+        const pulse = 1 + Math.sin(elapsed * 5 + item.phase) * .08;
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.scale(pulse, pulse);
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 13;
+        ctx.fillStyle = "#101b20";
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = color;
+
+        if (item.type === "oil") {
+          roundRect(-6, -5, 12, 12, 2);
+          ctx.fill();
+          roundRect(-3, -9, 6, 4, 1);
+          ctx.fill();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(6, -2);
+          ctx.lineTo(9, 1);
+          ctx.lineTo(9, 5);
+          ctx.stroke();
+          ctx.fillStyle = "#101b20";
+          ctx.font = "800 7px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("OIL", 0, 1);
+        } else {
+          roundRect(-8, -6, 16, 13, 2);
+          ctx.fill();
+          ctx.fillStyle = "#101b20";
+          ctx.fillRect(-5, -3, 3, 3);
+          ctx.fillRect(1, -3, 3, 3);
+          ctx.fillRect(-5, 2, 3, 3);
+          ctx.fillRect(1, 2, 3, 3);
+        }
+        ctx.restore();
+      }
+
+      function drawShot(shot) {
+        ctx.save();
+        ctx.shadowColor = "#fff3a8";
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = "#fff8be";
+        roundRect(shot.x - 1.5, shot.y - 11, 3, 15, 1.5);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawParticles() {
+        particles.forEach((particle) => {
+          ctx.globalAlpha = Math.max(0, particle.life / particle.maxLife);
+          ctx.fillStyle = particle.color;
+          ctx.beginPath(); ctx.arc(particle.x, particle.y, particle.size * particle.life / particle.maxLife, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      function draw(dt = 0) {
+        if (!width || !height) return;
+        ctx.save();
+        if (shake > 0) ctx.translate(random(-shake, shake), random(-shake, shake));
+        drawBackground(dt);
+        obstacles.forEach(drawObstacle);
+        pickups.forEach(drawPickup);
+        shots.forEach(drawShot);
+        drawParticles();
+        drawPlane();
+        ctx.restore();
+        if (damageFlash > 0) {
+          ctx.fillStyle = `rgba(237, 91, 69, ${damageFlash * .15})`;
+          ctx.fillRect(0, 0, width, height);
+        }
+      }
+
+      function addBurst(x, y, color, count = 12) {
+        for (let index = 0; index < count; index++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = random(45, 190);
+          particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, size: random(2, 5), life: random(.24, .62), maxLife: .62, color });
+        }
+      }
+
+      function spawnObstacle() {
+        const radius = random(16, 29) + Math.min(distance * .0014, 9);
+        const jagged = Array.from({ length: 9 }, () => random(.76, 1.12));
+        obstacles.push({
+          x: random(35 + radius, width - 35 - radius),
+          y: -radius - 8,
+          radius,
+          speed: random(125, 205) + Math.min(distance * .1, 130),
+          rotation: random(0, Math.PI * 2),
+          spin: random(-1.2, 1.2),
+          color: Math.floor(Math.random() * obstacleColors.length),
+          hp: radius > 36 ? 2 : 1,
+          jagged
+        });
+      }
+
+      function spawnPickup() {
+        pickups.push({
+          type: Math.random() < .5 ? "oil" : "ammo",
+          x: random(30, width - 30),
+          y: -24,
+          speed: random(105, 150),
+          phase: random(0, Math.PI * 2)
+        });
+      }
+
+      function showStatus(message) {
+        statusMessage.textContent = message;
+        statusMessage.hidden = false;
+        statusMessageRemaining = 2;
+      }
+
+      function updateStatus(dt) {
+        if (rapidFireRemaining > 0) {
+          statusMessage.textContent = `RAPID FIRE · ${Math.ceil(rapidFireRemaining)}s`;
+          statusMessage.hidden = false;
+        } else if (statusMessageRemaining > 0) {
+          statusMessageRemaining -= dt;
+          if (statusMessageRemaining <= 0) statusMessage.hidden = true;
+        } else {
+          statusMessage.hidden = true;
+        }
+      }
+
+      function fire() {
+        if (ammo < 8) return;
+        for (let index = 0; index < 8; index++) {
+          shots.push({
+            x: plane.x + (index - 3.5) * 9,
+            y: plane.y - 25,
+            vx: 0,
+            vy: 530
+          });
+        }
+        ammo -= 8;
+        updateMeters();
+        shotIn = rapidFireRemaining > 0 ? .065 : .11;
+      }
+
+      function update(dt) {
+        elapsed += dt;
+        if (state !== "playing") return;
+        hitSoundIn = Math.max(0, hitSoundIn - dt);
+        rapidFireRemaining = Math.max(0, rapidFireRemaining - dt);
+        updateStatus(dt);
+        oil = Math.max(0, oil - dt * .9);
+        updateMeters();
+        if (oil <= 0) {
+          endGame("oil");
+          return;
+        }
+        const direction = (controls.right || keys.has("ArrowRight") || keys.has("KeyD") ? 1 : 0) - (controls.left || keys.has("ArrowLeft") || keys.has("KeyA") ? 1 : 0);
+        const verticalDirection = (controls.backward || keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0) - (controls.forward || keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0);
+        const targetTilt = direction;
+        plane.tilt += (targetTilt - plane.tilt) * Math.min(1, dt * 9);
+        plane.x = clamp(plane.x + direction * 390 * dt, 34, width - 34);
+        plane.y = clamp(plane.y + verticalDirection * 300 * dt, 45, height - 45);
+        distance += dt * (31 + Math.min(score * .035, 45));
+        distanceDisplay.textContent = String(Math.floor(distance)).padStart(4, "0");
+
+        shotIn -= dt;
+        if ((controls.fire || keys.has("Space")) && shotIn <= 0) {
+          if (ammo >= 8) fire();
+          else shotIn = .2;
+        }
+
+        spawnIn -= dt;
+        if (spawnIn <= 0) {
+          if (Math.random() < .28) spawnPickup();
+          else spawnObstacle();
+          spawnIn = random(.48, 1.08) * Math.max(.48, 1 - distance * .00055);
+        }
+
+        obstacles.forEach((item) => {
+          item.y += item.speed * dt;
+          item.x += Math.sin(elapsed * 1.3 + item.rotation) * 13 * dt;
+          item.rotation += item.spin * dt;
+        });
+        pickups.forEach((item) => { item.y += item.speed * dt; });
+        shots.forEach((shot) => {
+          shot.x += shot.vx * dt;
+          shot.y -= shot.vy * dt;
+        });
+
+        for (let shotIndex = shots.length - 1; shotIndex >= 0; shotIndex--) {
+          const shot = shots[shotIndex];
+          let hit = false;
+          for (let itemIndex = obstacles.length - 1; itemIndex >= 0; itemIndex--) {
+            const item = obstacles[itemIndex];
+            if (Math.abs(shot.x - item.x) < item.radius * .82 && Math.abs(shot.y - item.y) < item.radius * .82) {
+              item.hp -= 1;
+              if (hitSoundIn <= 0) {
+                playSound("hit");
+                hitSoundIn = .1;
+              }
+              addBurst(shot.x, shot.y, "#fff1a8", 4);
+              if (item.hp <= 0) {
+                addBurst(item.x, item.y, obstacleColors[item.color], 14);
+                obstacles.splice(itemIndex, 1);
+                score += 10;
+                scoreDisplay.textContent = String(score).padStart(3, "0");
+              }
+              hit = true;
+              break;
+            }
+          }
+          if (hit || shot.y < -20 || shot.x < -20 || shot.x > width + 20) shots.splice(shotIndex, 1);
+        }
+
+        if (plane.invulnerable <= 0) {
+          for (let index = obstacles.length - 1; index >= 0; index--) {
+            const item = obstacles[index];
+            const dx = item.x - plane.x;
+            const dy = item.y - plane.y;
+            if (dx * dx + dy * dy < (item.radius + 19) ** 2) {
+              obstacles.splice(index, 1);
+              addBurst(item.x, item.y, obstacleColors[item.color], 18);
+              hull = 0;
+              playSound("damage");
+              damageFlash = .8;
+              shake = 9;
+              updateHull();
+              endGame("obstacle");
+              break;
+            }
+          }
+        } else {
+          plane.invulnerable -= dt;
+        }
+
+        if (state === "playing") {
+          for (let index = pickups.length - 1; index >= 0; index--) {
+            const item = pickups[index];
+            const dx = item.x - plane.x;
+            const dy = item.y - plane.y;
+            if (dx * dx + dy * dy >= 34 ** 2) continue;
+            pickups.splice(index, 1);
+            playSound("pickup");
+            if (item.type === "oil") {
+              if (oil < 100) {
+                oil = Math.min(100, oil + 35);
+                updateMeters();
+                showStatus("OIL SUPPLY · LEVEL RESTORED");
+              } else {
+                score += 25;
+                scoreDisplay.textContent = String(score).padStart(3, "0");
+                showStatus("OIL SUPPLY · +25 POINTS");
+              }
+            } else {
+              ammo = Math.min(ammoCapacity, ammo + 600);
+              rapidFireRemaining = Math.min(20, rapidFireRemaining + 10);
+              updateMeters();
+              showStatus("AMMO SUPPLY · RAPID FIRE");
+            }
+          }
+        }
+
+        particles.forEach((particle) => {
+          particle.x += particle.vx * dt;
+          particle.y += particle.vy * dt;
+          particle.vx *= Math.max(0, 1 - dt * 2.5);
+          particle.vy *= Math.max(0, 1 - dt * 2.5);
+          particle.life -= dt;
+        });
+        particles = particles.filter((particle) => particle.life > 0);
+        obstacles = obstacles.filter((item) => item.y < height + item.radius + 8);
+        pickups = pickups.filter((item) => item.y < height + 24);
+        shots = shots.filter((shot) => shot.y > -22);
+        damageFlash = Math.max(0, damageFlash - dt);
+        shake = Math.max(0, shake - dt * 30);
+      }
+
+      function updateHull() {
+        hullDisplay.innerHTML = "";
+        for (let index = 0; index < 3; index++) {
+          const segment = document.createElement("i");
+          if (index >= hull) segment.className = "off";
+          hullDisplay.append(segment);
+        }
+      }
+
+      function updateMeters() {
+        const oilPercent = Math.ceil(oil);
+        const ammoPercent = ammo / ammoCapacity * 100;
+        oilLevelDisplay.textContent = `${oilPercent}%`;
+        oilMeter.style.width = `${oilPercent}%`;
+        oilMeter.setAttribute("aria-valuenow", String(oilPercent));
+        oilMeter.classList.toggle("low", oil <= 20);
+        ammoLevelDisplay.textContent = String(ammo);
+        ammoMeter.style.width = `${ammoPercent}%`;
+        ammoMeter.setAttribute("aria-valuenow", String(ammo));
+        ammoMeter.classList.toggle("low", ammoPercent <= 20);
+      }
+
+      function showScreen(kind, reason) {
+        const title = document.querySelector("#screen-title");
+        const eyebrow = document.querySelector("#screen-eyebrow");
+        const copy = document.querySelector("#screen-copy");
+        const label = document.querySelector("#button-label");
+        const note = document.querySelector("#screen-note");
+        if (kind === "ready") {
+          eyebrow.textContent = "A CLEAR SKY NEVER LASTS";
+          title.innerHTML = "SKYWARD<br>RUN";
+          copy.textContent = "Take the controls. Weave through the weather, clear a path, and see how far your flight can go.";
+          label.textContent = "START FLIGHT";
+          note.textContent = "ARROWS / WASD TO FLY · SPACE TO FIRE";
+        } else if (kind === "paused") {
+          eyebrow.textContent = "AUTOPILOT ENGAGED";
+          title.textContent = "TAKE A BREATHER";
+          copy.textContent = `Flight paused at ${Math.floor(distance)} meters with ${score} points on the board.`;
+          label.textContent = "RESUME FLIGHT";
+          note.textContent = "PRESS P OR ESC TO RESUME";
+        } else {
+          eyebrow.textContent = reason === "oil" ? "OIL SUPPLY DEPLETED" : "FLIGHT COMPLETE";
+          title.innerHTML = "NICE<br>FLIGHT";
+          copy.textContent = `You flew ${Math.floor(distance)} meters and scored ${score} points. Ready for another run?`;
+          label.textContent = "FLY AGAIN";
+          note.textContent = "YOUR NEXT RUN STARTS NOW";
+        }
+        screen.hidden = false;
+      }
+
+      function startGame() {
+        state = "playing";
+        elapsed = 0;
+        score = 0;
+        distance = 0;
+        hull = 3;
+        oil = 100;
+        ammo = ammoCapacity;
+        spawnIn = .55;
+        shotIn = 0;
+        rapidFireRemaining = 0;
+        statusMessageRemaining = 0;
+        damageFlash = 0;
+        shake = 0;
+        obstacles = [];
+        pickups = [];
+        shots = [];
+        particles = [];
+        plane.x = width / 2;
+        plane.y = height - Math.max(105, height * .2);
+        plane.invulnerable = 0;
+        scoreDisplay.textContent = "000";
+        distanceDisplay.textContent = "0000";
+        statusMessage.hidden = true;
+        updateHull();
+        updateMeters();
+        screen.hidden = true;
+        pauseButton.hidden = false;
+        clearControls();
+      }
+
+      function pauseGame() {
+        if (state === "playing") {
+          state = "paused";
+          clearControls();
+          showScreen("paused");
+        } else if (state === "paused") {
+          state = "playing";
+          screen.hidden = true;
+        }
+      }
+
+      function endGame(reason = "hull") {
+        state = "over";
+        pauseButton.hidden = true;
+        clearControls();
+        showScreen("over", reason);
+      }
+
+      function clearControls() {
+        controls.left = false;
+        controls.right = false;
+        controls.forward = false;
+        controls.backward = false;
+        controls.fire = false;
+        keys.clear();
+      }
+
+      function frame(timestamp) {
+        const dt = Math.min((timestamp - (lastTime || timestamp)) / 1000, .04);
+        lastTime = timestamp;
+        update(dt);
+        draw(dt);
+        requestAnimationFrame(frame);
+      }
+
+      startButton.addEventListener("click", startGame);
+      pauseButton.addEventListener("click", pauseGame);
+      window.addEventListener("resize", resize);
+      window.addEventListener("blur", clearControls);
+      document.addEventListener("visibilitychange", () => { if (document.hidden && state === "playing") pauseGame(); });
+
+      window.addEventListener("keydown", (event) => {
+        if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].includes(event.code)) event.preventDefault();
+        if (event.repeat) return;
+        if (event.code === "KeyP" || event.code === "Escape") {
+          if (state === "playing" || state === "paused") pauseGame();
+          return;
+        }
+        keys.add(event.code);
+      });
+      window.addEventListener("keyup", (event) => keys.delete(event.code));
+
+      document.querySelectorAll("[data-control]").forEach((button) => {
+        const control = button.dataset.control;
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          controls[control] = true;
+          button.setPointerCapture(event.pointerId);
+        });
+        const release = () => { controls[control] = false; };
+        button.addEventListener("pointerup", release);
+        button.addEventListener("pointercancel", release);
+        button.addEventListener("lostpointercapture", release);
+      });
+
+      resize();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
