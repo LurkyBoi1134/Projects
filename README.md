@@ -12,10 +12,11 @@ Pages.
 | [`Floor_pulse/`](./Floor_pulse/) | Campus activity prototype — [open HTML page](./Floor_pulse/index.html). |
 | [`Game_flight/`](./Game_flight/) | Skyward Run — [open HTML game](./Game_flight/index.html). |
 | [`Game_guandan/`](./Game_guandan/) | Guandan card game — [open HTML game](./Game_guandan/index.html). |
+| [`Game_boardgame/`](./Game_boardgame/) | Four-player Luzhanqi — [open HTML game](./Game_boardgame/index.html). |
 | [`Knowledge_base/`](./Knowledge_base/) | CS 61A learner's field guide — [open HTML guide](./Knowledge_base/cs61a.html). |
 
-Each project folder has its own `README.md`, `project.md`, and `.gitignore`.
-Check its README for project-specific run and preview instructions before
+Project folders may include their own `README.md`, `project.md`, and
+`.gitignore`. Check a project's README for run and preview instructions before
 making changes.
 
 ## Working in this repository

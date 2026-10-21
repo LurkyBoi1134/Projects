@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#16271f">
+  <title>Four-player Luzhanqi</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f1ead8;
+      --muted: #b5b9a7;
+      --paper: #f4f0e3;
+      --felt: #233d32;
+      --line: rgba(244, 236, 215, .32);
+      --gold: #e7c675;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-width: 320px; min-height: 100vh;
+      background: #16271f; color: var(--ink);
+      font: 14px/1.45 "Avenir Next", Avenir, "Segoe UI", sans-serif;
+    }
+    button, select { font: inherit; }
+    .shell { max-width: 1420px; margin: 0 auto; padding: 22px clamp(14px, 3vw, 38px) 30px; }
+    header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:18px; }
+    h1 { margin:0; font: clamp(26px, 4vw, 42px)/1.05 Georgia, serif; letter-spacing:.02em; }
+    .subtitle { margin:7px 0 0; color:var(--muted); }
+    .toolbar { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; }
+    select, .action {
+      min-height:40px; padding:0 13px; border:1px solid rgba(231,198,117,.45);
+      border-radius:4px; background:#20352b; color:var(--ink);
+    }
+    .action { cursor:pointer; }
+    .action:hover { background:#2c493b; }
+    .layout { display:grid; grid-template-columns:minmax(0, 1fr) 265px; gap:18px; align-items:start; }
+    .board-card, .side-card {
+      border:1px solid rgba(231,198,117,.25); border-radius:7px;
+      background:#1d3329; box-shadow:0 16px 44px rgba(0,0,0,.18);
+    }
+    .board-card { padding:12px; overflow:hidden; }
+    .board { position:relative; width:100%; aspect-ratio:1; min-height:440px; overflow:hidden; border-radius:4px; background:var(--paper); }
+    .board svg { position:absolute; inset:0; width:100%; height:100%; }
+    .zone { fill:rgba(220,215,195,.2); stroke:rgba(30,34,29,.22); stroke-width:2; }
+    .center-tile { fill:rgba(221,228,225,.9); stroke:rgba(102,120,119,.7); stroke-width:3; }
+    .zone-label { fill:#5e6156; font:700 13px "Avenir Next",sans-serif; letter-spacing:2px; }
+    .route { fill:none; stroke:#191b19; stroke-width:4; }
+    .route.rail { stroke:#e7c700; stroke-width:4; }
+    .route.junction-route { stroke-width:6; }
+    .station { position:absolute; z-index:1; width:2.7%; aspect-ratio:1.18; min-width:13px; max-width:30px; padding:0;
+      transform:translate(-50%,-50%); border:1px solid #d51718; border-radius:1px;
+      background:#ed2024; color:#fff8e8; cursor:pointer; display:grid; place-items:center;
+      font-size:clamp(7px,.8vw,11px); line-height:1; }
+    .station.camp { width:3.5%; aspect-ratio:1; min-width:15px; border-radius:50%; background:#113ae3; border:2px solid #102ec3; }
+    .station.center-camp { width:2.7%; max-width:30px; min-width:13px; aspect-ratio:1; border-radius:50%; border:2px solid #102ec3; background:#113ae3; color:#fff; }
+    .station.center-camp.occupied { background:var(--player-color); }
+    .station.base { border-radius:2px; background:#14bf28; border-color:#149c24; }
+    .station.center:not(.center-camp) { background:#e72325; border-color:#c41618; }
+    .station.occupied { border:2px solid var(--player-color); background:var(--player-color); color:white; box-shadow:0 2px 7px #0004; }
+    .station.selected { outline:3px solid #bd4b32; outline-offset:2px; z-index:2; }
+    .station.target { box-shadow:0 0 0 4px #3d9974,0 2px 7px #0004; }
+    .station:disabled { cursor:default; }
+    .station .mark { pointer-events:none; text-shadow:0 1px 2px #0008; font-weight:800; }
+    .status {
+      min-height:42px; margin-top:10px; padding:10px 13px; border-left:3px solid var(--gold);
+      background:#16271f; color:#f4e7bd;
+    }
+    aside { display:grid; gap:12px; }
+    .side-card { padding:15px; }
+    .side-card h2 { margin:0 0 10px; font:20px Georgia,serif; }
+    .team-list { display:grid; gap:7px; }
+    .player {
+      display:grid; grid-template-columns:10px 1fr auto; align-items:center; gap:8px;
+      padding:8px; border:1px solid rgba(255,255,255,.08); border-radius:4px; background:#172a21;
+    }
+    .dot { width:9px; height:9px; border-radius:50%; background:var(--player-color); }
+    .player.active { border-color:var(--player-color); }
+    .player.out { opacity:.45; text-decoration:line-through; }
+    .player small { display:block; color:var(--muted); font-size:11px; }
+    .pieces { color:var(--gold); font-variant-numeric:tabular-nums; }
+    .legend { color:var(--muted); font-size:12px; }
+    .legend p { margin:6px 0; }
+    .team-red { color:#ef8c72; } .team-blue { color:#91b9e4; }
+    .history { max-height:180px; overflow:auto; margin:0; padding-left:20px; color:var(--muted); font-size:12px; }
+    .history li { margin:4px 0; }
+    a { color:#e7c675; }
+    .rules-link { margin-top:12px; display:inline-block; }
+    @media(max-width:880px) {
+      header { display:block; }
+      .toolbar { justify-content:flex-start; margin-top:15px; }
+      .layout { grid-template-columns:1fr; }
+      aside { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+      .board { min-height:350px; }
+    }
+    @media(max-width:520px) {
+      .shell { padding:15px 9px 24px; }
+      .board-card { padding:5px; }
+      .board { min-height:300px; }
+      .station { min-width:13px; }
+      .toolbar select, .toolbar .action { min-height:36px; padding:0 9px; font-size:12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Four-player Luzhanqi</h1>
+        <p class="subtitle">Four armies · two alliances · one shared battlefield</p>
+      </div>
+      <div class="toolbar">
+        <label for="visibility">Visibility</label>
+        <select id="visibility" aria-label="Piece visibility">
+          <option value="four">Four concealed (四暗)</option>
+          <option value="partners">Partners visible (双明)</option>
+          <option value="all">All visible (全明)</option>
+        </select>
+        <button class="action" id="new-game">New game</button>
+      </div>
+    </header>
+    <div class="layout">
+      <section class="board-card" aria-label="Game board">
+        <div class="board" id="board" role="group" aria-label="Luzhanqi board"></div>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+      </section>
+      <aside>
+        <section class="side-card">
+          <h2>Turn order</h2>
+          <div class="team-list" id="players"></div>
+          <p class="legend"><span class="team-red">North + South</span> vs
+            <span class="team-blue">East + West</span></p>
+          <a class="rules-link" href="./rule.md">Read the rules</a>
+        </section>
+        <section class="side-card">
+          <h2>How to play</h2>
+          <div class="legend">
+            <p>You always play as South. Select a highlighted piece, then choose a green destination; North, East, and West are computer-controlled.</p>
+            <p>Move onto a reachable East or West enemy piece to attack. For ordinary pieces, the lower rank is removed; special pieces follow their listed battle rules.</p>
+            <p>A railway move can finish with one adjacent road step to reach or attack a stop beside the track.</p>
+            <p>Player front faces the center: North→South, South→North, East→West, West→East.</p>
+            <p>Center: each side is a straight line of 3 stops — 2 end stops and 1 middle camp — plus the center stop.</p>
+            <p>Computer turns play automatically after a short pause.</p>
+            <p>Turn order runs clockwise: North → East → South → West.</p>
+          </div>
+        </section>
+        <section class="side-card">
+          <h2>Battle log</h2>
+          <ol class="history" id="history" aria-live="polite"></ol>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <script>
+    (() => {
+      "use strict";
+      const NS = "http://www.w3.org/2000/svg";
+      const sides = [
+        { id:"N", name:"North", team:0, color:"#b74536", rotate:"north" },
+        { id:"E", name:"East", team:1, color:"#3975a7", rotate:"east" },
+        { id:"S", name:"South", team:0, color:"#bd8733", rotate:"south" },
+        { id:"W", name:"West", team:1, color:"#587d48", rotate:"west" }
+      ];
+      const ranks = [
+        ["marshal","Commander","司令",9,1], ["general","General","军长",8,1],
+        ["division","Division","师长",7,2], ["brigade","Brigade","旅长",6,2],
+        ["regiment","Regiment","团长",5,2], ["battalion","Battalion","营长",4,2],
+        ["company","Company","连长",3,3], ["platoon","Platoon","排长",2,3],
+        ["engineer","Engineer","工兵",1,3], ["bomb","Bomb","炸弹",0,2],
+        ["mine","Mine","地雷",-1,3], ["flag","Flag","军旗",-2,1]
+      ];
+      const rankByType = Object.fromEntries(ranks.map(r => [r[0], r]));
+      const camps = new Set(["2,1","2,3","3,2","4,1","4,3"]);
+      const centerCamps = new Set(["0,2","2,4","4,2","2,0"]);
+      const bases = new Set(["0,1","0,3"]);
+      const boardZoneLabels = [
+        { x:500, y:26, label:"NORTH", anchor:"middle" },
+        { x:962, y:500, label:"EAST", anchor:"end" },
+        { x:500, y:982, label:"SOUTH", anchor:"middle" },
+        { x:38, y:500, label:"WEST", anchor:"start" }
+      ];
+      const board = document.querySelector("#board");
+      const status = document.querySelector("#status");
+      const playersEl = document.querySelector("#players");
+      const historyEl = document.querySelector("#history");
+      const visibilityEl = document.querySelector("#visibility");
+      let nodes = new Map();
+      let edges = [];
+      let state;
+      let aiTimer=null;
+
+      function key(owner, row, col) { return `${owner}:${row}:${col}`; }
+      function xy(owner, row, col) {
+        if (owner === "N") return [400 + col * 50, 100 + row * 50];
+        if (owner === "E") return [900 - row * 50, 400 + col * 50];
+        if (owner === "S") return [600 - col * 50, 900 - row * 50];
+        if (owner === "W") return [100 + row * 50, 600 - col * 50];
+        if ((row === 0 || row === 4) && (col === 1 || col === 3)) {
+          return [col === 1 ? 400 : 600, row === 0 ? 400 : 600];
+        }
+        return [400 + col * 50, 400 + row * 50];
+      }
+      function addNode(owner, row, col, center = false) {
+        const id = key(owner, row, col);
+        nodes.set(id, { id, owner, row, col, center, x:xy(owner,row,col)[0], y:xy(owner,row,col)[1] });
+      }
+      function addEdge(a, b, rail = false) { edges.push({ a, b, rail }); }
+      function addCurveEdge(a, b, controlX, controlY) {
+        edges.push({ a, b, rail:false, curve:{ x:controlX, y:controlY } });
+      }
+      function makeBoard() {
+        for (const side of sides) {
+          for (let r=0;r<6;r++) for (let c=0;c<5;c++) addNode(side.id,r,c);
+          for (let r=0;r<6;r++) for (let c=0;c<5;c++) {
+            const here=key(side.id,r,c);
+            if (r<5) addEdge(here,key(side.id,r+1,c),c===1 || c===3);
+            if (c<4) addEdge(here,key(side.id,r,c+1),r===1 || r===4 || r===5);
+            if (camps.has(`${r},${c}`)) {
+              for (const dr of [-1,1]) for (const dc of [-1,1]) {
+                const nextRow=r+dr, nextCol=c+dc;
+                if(nextRow>=0&&nextRow<6&&nextCol>=0&&nextCol<5) {
+                  addEdge(here,key(side.id,nextRow,nextCol),true);
+                }
+              }
+            }
+          }
+        }
+        const centerPositions = [
+          [0,1],[0,2],[0,3],
+          [2,0],[2,2],[2,4],
+          [4,1],[4,2],[4,3]
+        ];
+        for(const [r,c] of centerPositions) addNode("C",r,c,true);
+        addEdge(key("C",0,1),key("C",0,2));
+        addEdge(key("C",0,2),key("C",0,3));
+        addEdge(key("C",0,3),key("C",2,4));
+        addEdge(key("C",2,4),key("C",4,3));
+        addEdge(key("C",4,3),key("C",4,2));
+        addEdge(key("C",4,2),key("C",4,1));
+        addEdge(key("C",4,1),key("C",2,0));
+        addEdge(key("C",2,0),key("C",0,1));
+        for(const [r,c] of [[0,2],[2,4],[4,2],[2,0]]) {
+          addEdge(key("C",r,c),key("C",2,2),true);
+        }
+        const approaches=[
+          ["N",[[5,0,0,1],[5,2,0,2],[5,4,0,3]]],
+          ["E",[[5,0,0,3],[5,2,2,4],[5,4,4,3]]],
+          ["S",[[5,0,4,3],[5,2,4,2],[5,4,4,1]]],
+          ["W",[[5,0,4,1],[5,2,2,0],[5,4,0,1]]]
+        ];
+        for(const [owner,links] of approaches){
+          for(const [row,col,centerRow,centerCol] of links){
+            addEdge(key(owner,row,col),key("C",centerRow,centerCol),true);
+          }
+        }
+        addCurveEdge(key("N",5,4),key("E",5,0),600,400);
+        addCurveEdge(key("E",5,4),key("S",5,0),600,600);
+        addCurveEdge(key("S",5,4),key("W",5,0),400,600);
+        addCurveEdge(key("W",5,4),key("N",5,0),400,400);
+      }
+      function svg(tag,attrs={}) {
+        const el=document.createElementNS(NS,tag);
+        for(const [name,value] of Object.entries(attrs)) el.setAttribute(name,value);
+        return el;
+      }
+      function buildBoard() {
+        board.replaceChildren();
+        const map=svg("svg",{viewBox:"0 0 1000 1000","aria-hidden":"true"});
+        const zones=[
+          [375,75,250,300],[625,375,300,250],
+          [375,625,250,300],[75,375,300,250],
+          [375,375,250,250]
+        ];
+        for(const [x,y,w,h] of zones){
+          map.append(svg("rect",{x,y,width:w,height:h,rx:5,class:"zone"}));
+        }
+        for(const {x,y,label,anchor} of boardZoneLabels){
+          const text=svg("text",{x,y,"text-anchor":anchor,class:"zone-label"});
+          text.textContent=label; map.append(text);
+        }
+        for(const edge of edges){
+          const a=nodes.get(edge.a),b=nodes.get(edge.b);
+          const junctionClass=a.center||b.center||edge.curve?" junction-route":"";
+          if(edge.curve){
+            map.append(svg("path",{d:`M ${a.x} ${a.y} Q ${edge.curve.x} ${edge.curve.y} ${b.x} ${b.y}`,class:`route turn-lane${junctionClass}`}));
+          } else {
+            map.append(svg("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,class:`route${edge.rail?" rail":""}${junctionClass}`}));
+          }
+        }
+        board.append(map);
+        for(const node of nodes.values()){
+          const button=document.createElement("button");
+          button.type="button"; button.className="station";
+          button.dataset.node=node.id;
+          button.style.left=`${node.x/10}%`; button.style.top=`${node.y/10}%`;
+          if(node.center) {
+            button.classList.add("center");
+            if(centerCamps.has(`${node.row},${node.col}`)) button.classList.add("center-camp");
+          } else if(camps.has(`${node.row},${node.col}`)) {
+            button.classList.add("camp");
+          } else if(bases.has(`${node.row},${node.col}`)) {
+            button.classList.add("base");
+          }
+          button.setAttribute("aria-label",`${node.center?"Center":sides.find(s=>s.id===node.owner).name} position, row ${node.row+1}, column ${node.col+1}`);
+          board.append(button);
+        }
+        board.addEventListener("click",onBoardClick);
+      }
+      function createPieces(owner) {
+        const pieces=[];
+        for(const [type,name,cn,rank,count] of ranks){
+          for(let n=0;n<count;n++) pieces.push({id:`${owner}-${type}-${n}`,owner,type,name,cn,rank,alive:true,revealed:false});
+        }
+        return pieces;
+      }
+      function randomSetup(owner) {
+        const squares=[];
+        for(let r=0;r<6;r++) for(let c=0;c<5;c++) {
+          if(!camps.has(`${r},${c}`)) squares.push({row:r,col:c});
+        }
+        const pieces=createPieces(owner);
+        const flag=pieces.find(p=>p.type==="flag");
+        const flagSquare={row:0,col:Math.random()<.5?1:3};
+        flag.row=flagSquare.row; flag.col=flagSquare.col;
+        flag.loc=key(owner,flag.row,flag.col);
+        const used=new Set([`${flag.row},${flag.col}`]);
+        const rest=pieces.filter(p=>p!==flag).sort(() => Math.random() - .5)
+          .sort((a,b)=>(a.type==="mine"?0:a.type==="bomb"?1:2)-(b.type==="mine"?0:b.type==="bomb"?1:2));
+        for(const piece of rest){
+          let options=squares.filter(s=>!used.has(`${s.row},${s.col}`));
+          if(piece.type==="mine") options=options.filter(s=>s.row<=1);
+          if(piece.type==="bomb") options=options.filter(s=>s.row<5);
+          const square=options[Math.floor(Math.random()*options.length)];
+          used.add(`${square.row},${square.col}`);
+          piece.row=square.row; piece.col=square.col; piece.loc=key(owner,square.row,square.col);
+        }
+        return pieces;
+      }
+      function startGame() {
+        if(aiTimer!==null){clearTimeout(aiTimer);aiTimer=null;}
+        state={
+          players:sides.map(side=>({...side,pieces:randomSetup(side.id),active:true,flagLost:false})),
+          turn:2,selection:null,targets:new Set(),log:[],winner:null
+        };
+        status.textContent="Your turn as South. North, East, and West are computer-controlled.";
+        addLog("New game: random legal setups generated.");
+        render();
+      }
+      function current() { return state.players[state.turn]; }
+      function pieceAt(node) {
+        const [owner,row,col]=node.split(":");
+        return state.players.flatMap(p=>p.pieces).find(p=>p.alive&&p.loc===node);
+      }
+      function side(owner) { return state.players.find(p=>p.id===owner); }
+      function visible(piece) {
+        const mode=visibilityEl.value;
+        if(mode==="all" || piece.revealed) return true;
+        if(piece.owner===current().id) return true;
+        return mode==="partners" && side(piece.owner).team===current().team;
+      }
+      function render() {
+        for(const button of board.querySelectorAll(".station")){
+          const node=button.dataset.node, piece=pieceAt(node);
+          button.classList.remove("occupied","selected","target");
+          button.style.removeProperty("--player-color");
+          const visiblePiece=piece&&visible(piece);
+          button.textContent=visiblePiece?rankByType[piece.type][2]:"";
+          if(piece){button.classList.add("occupied");button.style.setProperty("--player-color",side(piece.owner).color);}
+          if(state.selection===node) button.classList.add("selected");
+          if(state.targets.has(node)) button.classList.add("target");
+          button.title=piece?(visiblePiece?`${side(piece.owner).name}: ${piece.name} (${piece.cn})`:`${side(piece.owner).name}: concealed piece`):"Empty position";
+          button.setAttribute("aria-label",piece?(visiblePiece?`${side(piece.owner).name}, ${piece.name}`:`${side(piece.owner).name}, concealed piece`):"Empty position");
+        }
+        playersEl.replaceChildren();
+        for(const player of state.players){
+          const living=player.pieces.filter(p=>p.alive).length;
+          const item=document.createElement("div"); item.className="player";
+          if(player.id===current().id&&!state.winner)item.classList.add("active");
+          if(!player.active)item.classList.add("out");
+          item.style.setProperty("--player-color",player.color);
+          const role=player.id==="S"?"You":"Computer";
+          item.innerHTML=`<span class="dot"></span><span>${player.name}<small>${role} · ${player.team===0?"North–South":"East–West"} team${player.flagLost?" · flag lost":""}</small></span><span class="pieces">${living}</span>`;
+          playersEl.append(item);
+        }
+        historyEl.replaceChildren(...state.log.slice(-18).map(line=>{
+          const li=document.createElement("li");li.textContent=line;return li;
+        }));
+      }
+      function addLog(message) { state.log.push(message); }
+      function isCamp(node) {
+        const n=nodes.get(node);
+        return n.center?centerCamps.has(`${n.row},${n.col}`):camps.has(`${n.row},${n.col}`);
+      }
+      function neighbors(id) {
+        return edges.filter(e=>e.a===id||e.b===id).map(e=>({id:e.a===id?e.b:e.a,rail:e.rail}));
+      }
+      function pathFor(from,piece) {
+        const reachable=new Set();
+        const queue=[{id:from,railTravel:null}];
+        const visited=new Set();
+        while(queue.length){
+          const cur=queue.shift();
+          if(visited.has(cur.id))continue;
+          visited.add(cur.id);
+          for(const edge of neighbors(cur.id)){
+            if(cur.railTravel===false)continue;
+            const occupant=pieceAt(edge.id);
+            if(occupant&&occupant.owner===piece.owner)continue;
+            if(occupant&&side(occupant.owner).team===side(piece.owner).team)continue;
+            if(occupant&&isCamp(edge.id))continue;
+            reachable.add(edge.id);
+            if(cur.railTravel===true&&!edge.rail)continue;
+            const railTravel=cur.railTravel??edge.rail;
+            if(!occupant&&railTravel)queue.push({id:edge.id,railTravel});
+          }
+        }
+        reachable.delete(from);
+        return reachable;
+      }
+      function movable(piece) { return piece.alive&&piece.type!=="flag"&&piece.type!=="mine"&&!(nodes.get(piece.loc)?.owner!=="C"&&bases.has(`${nodes.get(piece.loc)?.row},${nodes.get(piece.loc)?.col}`)); }
+      function onBoardClick(event) {
+        const button=event.target.closest(".station"); if(!button||state.winner||current().id!=="S")return;
+        const id=button.dataset.node, occupant=pieceAt(id), turn=current();
+        if(state.selection){
+          if(state.targets.has(id)){move(state.selection,id);return;}
+          state.selection=null;state.targets.clear();
+        }
+        if(occupant&&occupant.owner===turn.id&&movable(occupant)){
+          state.selection=id;state.targets=pathFor(id,occupant);
+          status.textContent=state.targets.size?`${turn.name}: choose a highlighted destination.`:"No legal move from this position.";
+        }else{
+          status.textContent=occupant&&occupant.owner!==turn.id?"Choose one of your movable pieces first.":"Select one of your movable pieces.";
+        }
+        render();
+      }
+      function move(from,to) {
+        const attacker=pieceAt(from), defender=pieceAt(to), actor=current();
+        state.selection=null;state.targets.clear();
+        if(!attacker||attacker.owner!==actor.id)return;
+        if(defender){
+          attacker.revealed=true;defender.revealed=true;
+          const outcome=battle(attacker,defender);
+          addLog(`${actor.name}: ${attacker.name} vs ${side(defender.owner).name}'s ${defender.name} — ${outcome}.`);
+          if(defender.type==="flag"){
+            defender.alive=false;
+            side(defender.owner).flagLost=true;
+            if(attacker.alive){attacker.loc=to;}
+          }else if(outcome==="attacker wins"){
+            defender.alive=false;attacker.loc=to;
+          }else if(outcome==="both removed"){
+            attacker.alive=false;defender.alive=false;
+          }else if(outcome==="defender wins"){
+            attacker.alive=false;
+          }
+          revealFlagIfCommanderLost(actor);
+          revealFlagIfCommanderLost(side(defender.owner));
+          checkElimination(side(defender.owner));
+        }else{
+          attacker.loc=to;
+          addLog(`${actor.name} moved a ${attacker.name}.`);
+        }
+        checkElimination(actor);
+        if(!state.winner){advanceTurn();scheduleComputerTurn();}
+        render();
+      }
+      function revealFlagIfCommanderLost(player) {
+        const commander=player.pieces.find(p=>p.type==="marshal");
+        if(commander&&!commander.alive){
+          const flag=player.pieces.find(p=>p.type==="flag");
+          if(flag)flag.revealed=true;
+        }
+      }
+      function battle(a,d) {
+        if(a.type==="bomb"||d.type==="bomb") {a.alive=false;d.alive=false;return "both removed";}
+        if(d.type==="flag")return "flag captured";
+        if(d.type==="mine"){
+          if(a.type==="engineer")return "attacker wins";
+          a.alive=false;return "defender wins";
+        }
+        if(a.type==="mine"){
+          d.alive=false;return "attacker wins";
+        }
+        if(a.rank>d.rank)return "attacker wins";
+        if(a.rank<d.rank)return "defender wins";
+        return "both removed";
+      }
+      function checkElimination(player) {
+        if(!player.active)return;
+        const hasFlag=player.pieces.some(p=>p.alive&&p.type==="flag");
+        const hasMoves=player.pieces.some(piece=>movable(piece)&&pathFor(piece.loc,piece).size>0);
+        if(!hasFlag||!hasMoves){
+          player.active=false;
+          addLog(`${player.name} is eliminated${hasFlag?" (no movable pieces)":""}.`);
+        }
+        const remaining=state.players.filter(p=>p.team===player.team&&p.active).length;
+        const opponents=state.players.filter(p=>p.team!==player.team&&p.active).length;
+        if(!remaining){state.winner=player.team===0?1:0;status.textContent=`Game over — ${state.winner===0?"North + South":"East + West"} win!`;addLog("The opposing team wins.");}
+        else if(!opponents){state.winner=player.team;status.textContent=`Game over — ${state.winner===0?"North + South":"East + West"} win!`;addLog("The opposing team wins.");}
+      }
+      function advanceTurn() {
+        for(let i=1;i<=4;i++){
+          const next=(state.turn+i)%4;
+          if(state.players[next].active){
+            state.turn=next;
+            status.textContent=current().id==="S"?"Your turn as South.":`${current().name} (computer) is thinking...`;
+            return;
+          }
+        }
+      }
+      function computerMoves(player) {
+        const moves=[];
+        for(const piece of player.pieces){
+          if(!movable(piece))continue;
+          for(const destination of pathFor(piece.loc,piece)){
+            const defender=pieceAt(destination);
+            let score=Math.random()*2;
+            if(defender){
+              if(!defender.revealed)score+=2;
+              else if(defender.type==="flag")score+=100;
+              else if(defender.type==="mine")score+=piece.type==="engineer"?12:-10;
+              else if(piece.type==="bomb"||defender.type==="bomb")score+=1;
+              else score+=piece.rank>defender.rank?8:piece.rank===defender.rank?2:-8;
+            }
+            moves.push({from:piece.loc,to:destination,score});
+          }
+        }
+        return moves;
+      }
+      function scheduleComputerTurn() {
+        if(state.winner||current().id==="S"||aiTimer!==null)return;
+        aiTimer=setTimeout(()=>{
+          aiTimer=null;
+          if(state.winner||current().id==="S")return;
+          const moves=computerMoves(current());
+          if(!moves.length){
+            checkElimination(current());
+            if(!state.winner){advanceTurn();scheduleComputerTurn();}
+            render();
+            return;
+          }
+          const bestScore=Math.max(...moves.map(move=>move.score));
+          const choices=moves.filter(move=>move.score===bestScore);
+          const choice=choices[Math.floor(Math.random()*choices.length)];
+          move(choice.from,choice.to);
+        },600);
+      }
+      visibilityEl.addEventListener("change",()=>{if(state)render();});
+      document.querySelector("#new-game").addEventListener("click",startGame);
+      makeBoard();buildBoard();startGame();
+    })();
+  </script>
+</body>
+</html>
