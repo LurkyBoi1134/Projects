@@ -39,7 +39,7 @@
       isolation: isolate;
     }
 
-    canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
     .topbar {
       position: absolute;
@@ -129,6 +129,7 @@
     .hint { color: #c1d5d1; font-size: 11px; font-weight: 700; letter-spacing: .35px; }
     .hint kbd { display: inline-grid; min-width: 22px; height: 21px; margin: 0 2px; padding: 0 5px; place-items: center; border: 1px solid rgba(21,59,70,.2); border-bottom-width: 2px; border-radius: 4px; background: rgba(255,255,255,.5); font: inherit; font-size: 10px; }
     .touch-controls { display: none; gap: 9px; pointer-events: auto; }
+    .touch-hint { display: none; color: #c1d5d1; font-size: 11px; font-weight: 700; letter-spacing: .35px; }
     .touch-button {
       display: grid;
       width: 58px;
@@ -142,6 +143,7 @@
     }
     .touch-button svg { width: 21px; height: 21px; }
     .touch-button.fire { width: 66px; background: rgba(237,114,87,.92); color: white; border-color: rgba(255,255,255,.5); }
+    .touch-button[hidden] { display: none; }
     .touch-button:active { transform: scale(.95); }
 
     .screen {
@@ -203,8 +205,10 @@
       .bottomline { right: max(13px, env(safe-area-inset-right)); bottom: max(15px, env(safe-area-inset-bottom)); left: max(13px, env(safe-area-inset-left)); }
       .hint { display: none; }
       .touch-controls { display: flex; }
+      .touch-hint { display: block; }
       .touch-controls { gap: 5px; }
       .touch-button { width: 42px; height: 46px; }
+      .touch-button[data-control]:not(.fire) { display: none; }
       .touch-button.fire { width: 50px; }
       .screen-copy { font-size: 13px; }
     }
@@ -251,6 +255,7 @@
     <div class="status-message" id="status-message" role="status" hidden></div>
     <footer class="bottomline">
       <div class="hint"><kbd>←</kbd><kbd>→</kbd> steer <span aria-hidden="true">·</span> <kbd>↑</kbd><kbd>↓</kbd> fly <span aria-hidden="true">·</span> <kbd>SPACE</kbd> fire <span aria-hidden="true">·</span> <kbd>P</kbd> pause</div>
+      <div class="touch-hint">DRAG TO FLY</div>
       <div class="touch-controls" aria-label="Touch controls">
         <button class="touch-button" type="button" data-control="forward" aria-label="Move forward">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>
@@ -263,6 +268,9 @@
         </button>
         <button class="touch-button" type="button" data-control="right" aria-label="Move right">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+        <button class="touch-button pause" id="touch-pause-button" type="button" aria-label="Pause game" title="Pause game" hidden>
+          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6 4h3v12H6zM11 4h3v12h-3z"/></svg>
         </button>
         <button class="touch-button fire" type="button" data-control="fire" aria-label="Fire">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z"/><path d="m9 12 2 2 4-4"/></svg>
@@ -278,7 +286,7 @@
           <span id="button-label">START FLIGHT</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
         </button>
-        <p class="screen-note" id="screen-note">ARROWS / WASD TO FLY · SPACE TO FIRE</p>
+        <p class="screen-note" id="screen-note">DRAG OR USE ARROWS / WASD · SPACE TO FIRE</p>
       </div>
     </section>
   </main>
@@ -290,6 +298,7 @@
       const screen = document.querySelector("#screen");
       const startButton = document.querySelector("#start-button");
       const pauseButton = document.querySelector("#pause-button");
+      const touchPauseButton = document.querySelector("#touch-pause-button");
       const scoreDisplay = document.querySelector("#score");
       const distanceDisplay = document.querySelector("#distance");
       const hullDisplay = document.querySelector("#hull");
@@ -299,6 +308,7 @@
       const ammoMeter = document.querySelector("#ammo-meter");
       const statusMessage = document.querySelector("#status-message");
       const controls = { left: false, right: false, forward: false, backward: false, fire: false };
+      const touchDrag = { active: false, pointerId: null, lastX: 0, lastY: 0, tilt: 0 };
       const keys = new Set();
       const obstacleColors = ["#ea7758", "#d9944f", "#617b72", "#ddbc69"];
       let width = 0;
@@ -672,7 +682,7 @@
         }
         const direction = (controls.right || keys.has("ArrowRight") || keys.has("KeyD") ? 1 : 0) - (controls.left || keys.has("ArrowLeft") || keys.has("KeyA") ? 1 : 0);
         const verticalDirection = (controls.backward || keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0) - (controls.forward || keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0);
-        const targetTilt = direction;
+        const targetTilt = touchDrag.active ? touchDrag.tilt : direction;
         plane.tilt += (targetTilt - plane.tilt) * Math.min(1, dt * 9);
         plane.x = clamp(plane.x + direction * 390 * dt, 34, width - 34);
         plane.y = clamp(plane.y + verticalDirection * 300 * dt, 45, height - 45);
@@ -869,6 +879,7 @@
         updateMeters();
         screen.hidden = true;
         pauseButton.hidden = false;
+        touchPauseButton.hidden = false;
         clearControls();
       }
 
@@ -886,6 +897,7 @@
       function endGame(reason = "hull") {
         state = "over";
         pauseButton.hidden = true;
+        touchPauseButton.hidden = true;
         clearControls();
         showScreen("over", reason);
       }
@@ -896,6 +908,9 @@
         controls.forward = false;
         controls.backward = false;
         controls.fire = false;
+        touchDrag.active = false;
+        touchDrag.pointerId = null;
+        touchDrag.tilt = 0;
         keys.clear();
       }
 
@@ -909,6 +924,7 @@
 
       startButton.addEventListener("click", startGame);
       pauseButton.addEventListener("click", pauseGame);
+      touchPauseButton.addEventListener("click", pauseGame);
       window.addEventListener("resize", resize);
       window.addEventListener("blur", clearControls);
       document.addEventListener("visibilitychange", () => { if (document.hidden && state === "playing") pauseGame(); });
@@ -923,6 +939,36 @@
         keys.add(event.code);
       });
       window.addEventListener("keyup", (event) => keys.delete(event.code));
+
+      canvas.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse" || state !== "playing") return;
+        event.preventDefault();
+        touchDrag.active = true;
+        touchDrag.pointerId = event.pointerId;
+        touchDrag.lastX = event.clientX;
+        touchDrag.lastY = event.clientY;
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener("pointermove", (event) => {
+        if (!touchDrag.active || event.pointerId !== touchDrag.pointerId || state !== "playing") return;
+        event.preventDefault();
+        const deltaX = event.clientX - touchDrag.lastX;
+        const deltaY = event.clientY - touchDrag.lastY;
+        plane.x = clamp(plane.x + deltaX, 34, width - 34);
+        plane.y = clamp(plane.y + deltaY, 45, height - 45);
+        touchDrag.tilt = clamp(deltaX / 16, -1, 1);
+        touchDrag.lastX = event.clientX;
+        touchDrag.lastY = event.clientY;
+      });
+      const releaseTouchDrag = (event) => {
+        if (event.pointerId !== touchDrag.pointerId) return;
+        touchDrag.active = false;
+        touchDrag.pointerId = null;
+        touchDrag.tilt = 0;
+      };
+      canvas.addEventListener("pointerup", releaseTouchDrag);
+      canvas.addEventListener("pointercancel", releaseTouchDrag);
+      canvas.addEventListener("lostpointercapture", releaseTouchDrag);
 
       document.querySelectorAll("[data-control]").forEach((button) => {
         const control = button.dataset.control;
