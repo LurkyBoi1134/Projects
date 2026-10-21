@@ -213,6 +213,15 @@
       .screen-copy { font-size: 13px; }
     }
 
+    @media (max-width: 900px), (pointer: coarse) {
+      .hint { display: none; }
+      .touch-controls { display: flex; gap: 5px; }
+      .touch-hint { display: block; }
+      .touch-button { width: 42px; height: 46px; }
+      .touch-button[data-control]:not(.fire) { display: none; }
+      .touch-button.fire { width: 50px; }
+    }
+
     @media (max-height: 520px) and (min-width: 641px) {
       .topbar { top: 12px; }
       .bottomline { bottom: 12px; }
