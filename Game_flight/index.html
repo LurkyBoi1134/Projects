@@ -205,7 +205,9 @@
       .meter-track { height: 2px; margin-top: 5px; }
       .hull-dots { gap: 3px; }
       .hull-dots i { width: 7px; height: 6px; }
-      .pause-button, .audio-button { width: 30px; height: 30px; flex: 0 0 30px; margin: 0; }
+      .pause-button { width: 30px; height: 30px; flex: 0 0 30px; margin: 0; }
+      .audio-button { width: 44px; height: 44px; flex: 0 0 44px; margin: 0; }
+      .audio-button svg { width: 22px; height: 22px; }
       .status-message { top: max(102px, calc(env(safe-area-inset-top) + 89px)); }
       .bottomline { right: max(13px, env(safe-area-inset-right)); bottom: max(15px, env(safe-area-inset-bottom)); left: max(13px, env(safe-area-inset-left)); }
       .hint { display: none; }
@@ -395,12 +397,11 @@
       function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
       function random(min, max) { return min + Math.random() * (max - min); }
 
-      function playSound(kind) {
-        if (soundMuted) return;
+      function prepareAudio() {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) {
           reportAudioError(new Error("Web Audio is not supported by this browser."));
-          return;
+          return false;
         }
         if (!audioContext) {
           try {
@@ -409,9 +410,28 @@
             masterGain.connect(audioContext.destination);
           } catch (error) {
             reportAudioError(error);
-            return;
+            return false;
           }
         }
+        return true;
+      }
+
+      function unlockAudio() {
+        if (soundMuted || !prepareAudio() || audioContext.state === "running") return;
+        try {
+          const source = audioContext.createBufferSource();
+          source.buffer = audioContext.createBuffer(1, 1, audioContext.sampleRate);
+          source.connect(masterGain);
+          source.start();
+          resumeAudio().catch(reportAudioError);
+        } catch (error) {
+          reportAudioError(error);
+        }
+      }
+
+      function playSound(kind) {
+        if (soundMuted) return;
+        if (!prepareAudio()) return;
 
         const sounds = {
           start: { start: 330, end: 660, duration: .28, volume: .14, type: "sine" },
@@ -484,7 +504,10 @@
         if (masterGain && audioContext) {
           masterGain.gain.setTargetAtTime(soundMuted ? 0 : 1, audioContext.currentTime, .015);
         }
-        if (!soundMuted) playSound("resume");
+        if (!soundMuted) {
+          unlockAudio();
+          playSound("resume");
+        }
       }
 
       function roundRect(x, y, w, h, radius) {
@@ -1023,6 +1046,8 @@
       }
 
       startButton.addEventListener("click", startGame);
+      startButton.addEventListener("pointerdown", unlockAudio);
+      audioButton.addEventListener("pointerdown", unlockAudio);
       audioButton.addEventListener("click", toggleSound);
       pauseButton.addEventListener("click", pauseGame);
       touchPauseButton.addEventListener("click", pauseGame);
