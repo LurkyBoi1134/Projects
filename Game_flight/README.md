@@ -10,7 +10,9 @@ does not require a build step or package installation.
 
 On phones, drag on the playfield to steer and fly; use the pause and fire
 buttons at the bottom right. Use the speaker button to mute or enable sound
-effects. On desktop, use the arrow keys or WASD to move and Space to fire.
+effects. Sound is enabled by tapping **Start Flight**; if it is still quiet,
+tap the speaker button and check the phone's media volume and silent settings.
+On desktop, use the arrow keys or WASD to move and Space to fire.
 
 To play without the browser address bar, add the game to your phone's Home
 Screen and launch it from its icon. On iPhone, use Safari's Share menu and

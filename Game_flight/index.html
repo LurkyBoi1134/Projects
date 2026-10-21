@@ -356,6 +356,8 @@
       let shake = 0;
       let audioContext;
       let masterGain;
+      let audioResumePromise;
+      let soundPendingDuringResume = false;
       let soundMuted = false;
       let scenery = [];
       let obstacles = [];
@@ -396,26 +398,63 @@
       function playSound(kind) {
         if (soundMuted) return;
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) return;
-        if (!audioContext) {
-          audioContext = new AudioContextClass();
-          masterGain = audioContext.createGain();
-          masterGain.connect(audioContext.destination);
+        if (!AudioContextClass) {
+          reportAudioError(new Error("Web Audio is not supported by this browser."));
+          return;
         }
-        if (audioContext.state === "suspended") audioContext.resume();
+        if (!audioContext) {
+          try {
+            audioContext = new AudioContextClass();
+            masterGain = audioContext.createGain();
+            masterGain.connect(audioContext.destination);
+          } catch (error) {
+            reportAudioError(error);
+            return;
+          }
+        }
 
         const sounds = {
-          start: { start: 330, end: 660, duration: .28, volume: .07, type: "sine" },
-          fire: { start: 620, end: 260, duration: .055, volume: .035, type: "square" },
-          hit: { start: 260, end: 85, duration: .13, volume: .065, type: "triangle" },
-          destroy: { start: 170, end: 48, duration: .3, volume: .085, type: "sawtooth" },
-          damage: { start: 170, end: 48, duration: .24, volume: .09, type: "sawtooth" },
-          pickup: { start: 540, end: 950, duration: .16, volume: .055, type: "sine" },
-          pause: { start: 440, end: 330, duration: .11, volume: .05, type: "sine" },
-          resume: { start: 330, end: 520, duration: .13, volume: .05, type: "sine" },
-          over: { start: 330, end: 110, duration: .38, volume: .075, type: "triangle" }
+          start: { start: 330, end: 660, duration: .28, volume: .14, type: "sine" },
+          fire: { start: 620, end: 260, duration: .055, volume: .08, type: "square" },
+          hit: { start: 260, end: 85, duration: .13, volume: .13, type: "triangle" },
+          destroy: { start: 170, end: 48, duration: .3, volume: .16, type: "sawtooth" },
+          damage: { start: 170, end: 48, duration: .24, volume: .17, type: "sawtooth" },
+          pickup: { start: 540, end: 950, duration: .16, volume: .12, type: "sine" },
+          pause: { start: 440, end: 330, duration: .11, volume: .1, type: "sine" },
+          resume: { start: 330, end: 520, duration: .13, volume: .1, type: "sine" },
+          over: { start: 330, end: 110, duration: .38, volume: .15, type: "triangle" }
         };
         const sound = sounds[kind];
+        if (audioContext.state !== "running") {
+          if (soundPendingDuringResume) return;
+          soundPendingDuringResume = true;
+          resumeAudio().then(() => {
+            soundPendingDuringResume = false;
+            if (!soundMuted) scheduleSound(sound);
+          }).catch((error) => {
+            soundPendingDuringResume = false;
+            reportAudioError(error);
+          });
+          return;
+        }
+        scheduleSound(sound);
+      }
+
+      function resumeAudio() {
+        if (audioContext.state === "running") return Promise.resolve();
+        if (!audioResumePromise) {
+          try {
+            audioResumePromise = audioContext.resume().then(() => {
+              if (audioContext.state !== "running") throw new Error("Audio remained suspended after resume.");
+            }).finally(() => { audioResumePromise = undefined; });
+          } catch (error) {
+            return Promise.reject(error);
+          }
+        }
+        return audioResumePromise;
+      }
+
+      function scheduleSound(sound) {
         const now = audioContext.currentTime;
         const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();
@@ -428,6 +467,11 @@
         gain.connect(masterGain);
         oscillator.start(now);
         oscillator.stop(now + sound.duration);
+      }
+
+      function reportAudioError(error) {
+        console.error("Unable to start game audio.", error);
+        showStatus("SOUND UNAVAILABLE · CHECK DEVICE SETTINGS");
       }
 
       function toggleSound() {
