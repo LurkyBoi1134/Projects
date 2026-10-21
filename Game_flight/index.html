@@ -434,13 +434,15 @@
         if (soundPendingDuringResume) return false;
         try {
           soundPendingDuringResume = true;
-          scheduleSound(soundEffects[kind]);
           if (kind === "start") gestureStartSoundPending = true;
           if (kind === "fire") gestureFireSoundPending = true;
           resumeAudio().then(() => {
             soundPendingDuringResume = false;
+            if (!soundMuted) scheduleSound(soundEffects[kind]);
           }).catch((error) => {
             soundPendingDuringResume = false;
+            if (kind === "start") gestureStartSoundPending = false;
+            if (kind === "fire") gestureFireSoundPending = false;
             reportAudioError(error);
           });
           return true;
