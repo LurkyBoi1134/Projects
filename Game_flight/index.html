@@ -361,6 +361,19 @@
       let audioResumePromise;
       let soundPendingDuringResume = false;
       let soundMuted = false;
+      let gestureStartSoundPending = false;
+      let gestureFireSoundPending = false;
+      const soundEffects = {
+        start: { start: 330, end: 660, duration: .28, volume: .14, type: "sine" },
+        fire: { start: 620, end: 260, duration: .055, volume: .08, type: "square" },
+        hit: { start: 260, end: 85, duration: .13, volume: .13, type: "triangle" },
+        destroy: { start: 170, end: 48, duration: .3, volume: .16, type: "sawtooth" },
+        damage: { start: 170, end: 48, duration: .24, volume: .17, type: "sawtooth" },
+        pickup: { start: 540, end: 950, duration: .16, volume: .12, type: "sine" },
+        pause: { start: 440, end: 330, duration: .11, volume: .1, type: "sine" },
+        resume: { start: 330, end: 520, duration: .13, volume: .1, type: "sine" },
+        over: { start: 330, end: 110, duration: .38, volume: .15, type: "triangle" }
+      };
       let scenery = [];
       let obstacles = [];
       let pickups = [];
@@ -416,16 +429,25 @@
         return true;
       }
 
-      function unlockAudio() {
-        if (soundMuted || !prepareAudio() || audioContext.state === "running") return;
+      function unlockAudio(kind = "start") {
+        if (soundMuted || !prepareAudio() || audioContext.state === "running") return false;
+        if (soundPendingDuringResume) return false;
         try {
-          const source = audioContext.createBufferSource();
-          source.buffer = audioContext.createBuffer(1, 1, audioContext.sampleRate);
-          source.connect(masterGain);
-          source.start();
-          resumeAudio().catch(reportAudioError);
+          soundPendingDuringResume = true;
+          scheduleSound(soundEffects[kind]);
+          if (kind === "start") gestureStartSoundPending = true;
+          if (kind === "fire") gestureFireSoundPending = true;
+          resumeAudio().then(() => {
+            soundPendingDuringResume = false;
+          }).catch((error) => {
+            soundPendingDuringResume = false;
+            reportAudioError(error);
+          });
+          return true;
         } catch (error) {
+          soundPendingDuringResume = false;
           reportAudioError(error);
+          return false;
         }
       }
 
@@ -433,18 +455,7 @@
         if (soundMuted) return;
         if (!prepareAudio()) return;
 
-        const sounds = {
-          start: { start: 330, end: 660, duration: .28, volume: .14, type: "sine" },
-          fire: { start: 620, end: 260, duration: .055, volume: .08, type: "square" },
-          hit: { start: 260, end: 85, duration: .13, volume: .13, type: "triangle" },
-          destroy: { start: 170, end: 48, duration: .3, volume: .16, type: "sawtooth" },
-          damage: { start: 170, end: 48, duration: .24, volume: .17, type: "sawtooth" },
-          pickup: { start: 540, end: 950, duration: .16, volume: .12, type: "sine" },
-          pause: { start: 440, end: 330, duration: .11, volume: .1, type: "sine" },
-          resume: { start: 330, end: 520, duration: .13, volume: .1, type: "sine" },
-          over: { start: 330, end: 110, duration: .38, volume: .15, type: "triangle" }
-        };
-        const sound = sounds[kind];
+        const sound = soundEffects[kind];
         if (audioContext.state !== "running") {
           if (soundPendingDuringResume) return;
           soundPendingDuringResume = true;
@@ -504,10 +515,7 @@
         if (masterGain && audioContext) {
           masterGain.gain.setTargetAtTime(soundMuted ? 0 : 1, audioContext.currentTime, .015);
         }
-        if (!soundMuted) {
-          unlockAudio();
-          playSound("resume");
-        }
+        if (!soundMuted && !unlockAudio("resume")) playSound("resume");
       }
 
       function roundRect(x, y, w, h, radius) {
@@ -772,7 +780,8 @@
 
       function fire() {
         if (ammo < 8) return;
-        playSound("fire");
+        if (gestureFireSoundPending) gestureFireSoundPending = false;
+        else playSound("fire");
         for (let index = 0; index < 8; index++) {
           shots.push({
             x: plane.x + (index - 3.5) * 9,
@@ -971,7 +980,8 @@
       }
 
       function startGame() {
-        playSound("start");
+        if (gestureStartSoundPending) gestureStartSoundPending = false;
+        else playSound("start");
         state = "playing";
         elapsed = 0;
         score = 0;
@@ -1046,8 +1056,8 @@
       }
 
       startButton.addEventListener("click", startGame);
-      startButton.addEventListener("pointerdown", unlockAudio);
-      audioButton.addEventListener("pointerdown", unlockAudio);
+      startButton.addEventListener("pointerdown", () => unlockAudio("start"));
+      audioButton.addEventListener("pointerdown", () => unlockAudio("resume"));
       audioButton.addEventListener("click", toggleSound);
       pauseButton.addEventListener("click", pauseGame);
       touchPauseButton.addEventListener("click", pauseGame);
@@ -1100,6 +1110,7 @@
         const control = button.dataset.control;
         button.addEventListener("pointerdown", (event) => {
           event.preventDefault();
+          if (control === "fire") unlockAudio("fire");
           controls[control] = true;
           button.setPointerCapture(event.pointerId);
         });
