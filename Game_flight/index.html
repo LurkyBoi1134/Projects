@@ -83,7 +83,7 @@
     .hull-dots i { width: 12px; height: 7px; border-radius: 2px; background: var(--coral); transform: skew(-18deg); }
     .hull-dots i.off { background: #b6c9c3; }
 
-    .pause-button, .icon-button {
+    .pause-button, .icon-button, .audio-button {
       display: grid;
       place-items: center;
       width: 38px;
@@ -96,8 +96,9 @@
       pointer-events: auto;
       transition: transform .16s ease, background .16s ease;
     }
-    .pause-button:hover, .icon-button:hover { background: white; transform: translateY(-2px); }
+    .pause-button:hover, .icon-button:hover, .audio-button:hover { background: white; transform: translateY(-2px); }
     .pause-button svg { width: 16px; height: 16px; }
+    .audio-button svg { width: 17px; height: 17px; }
 
     .status-message {
       position: absolute;
@@ -204,7 +205,7 @@
       .meter-track { height: 2px; margin-top: 5px; }
       .hull-dots { gap: 3px; }
       .hull-dots i { width: 7px; height: 6px; }
-      .pause-button { width: 30px; height: 30px; flex: 0 0 30px; margin: 0; }
+      .pause-button, .audio-button { width: 30px; height: 30px; flex: 0 0 30px; margin: 0; }
       .status-message { top: max(102px, calc(env(safe-area-inset-top) + 89px)); }
       .bottomline { right: max(13px, env(safe-area-inset-right)); bottom: max(15px, env(safe-area-inset-bottom)); left: max(13px, env(safe-area-inset-left)); }
       .hint { display: none; }
@@ -260,6 +261,13 @@
           <span class="stat-value" id="ammo-level">800</span>
           <div class="meter-track"><div class="meter-fill ammo" id="ammo-meter" role="progressbar" aria-label="Ammunition level" aria-valuemin="0" aria-valuemax="800" aria-valuenow="800"></div></div>
         </div>
+        <button class="audio-button" id="audio-button" type="button" aria-label="Mute sound" aria-pressed="false" title="Mute sound">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H3v6h3l5 4z"/>
+            <path class="sound-waves" d="M15.5 8.5a5 5 0 0 1 0 7m3-10a9 9 0 0 1 0 13"/>
+            <path class="sound-muted" d="m16 9 5 6m0-6-5 6" hidden/>
+          </svg>
+        </button>
         <button class="pause-button" id="pause-button" type="button" aria-label="Pause game" title="Pause (P)" hidden>
           <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6 4h3v12H6zM11 4h3v12h-3z"/></svg>
         </button>
@@ -312,6 +320,9 @@
       const startButton = document.querySelector("#start-button");
       const pauseButton = document.querySelector("#pause-button");
       const touchPauseButton = document.querySelector("#touch-pause-button");
+      const audioButton = document.querySelector("#audio-button");
+      const soundWaves = audioButton.querySelector(".sound-waves");
+      const soundMutedIcon = audioButton.querySelector(".sound-muted");
       const scoreDisplay = document.querySelector("#score");
       const distanceDisplay = document.querySelector("#distance");
       const hullDisplay = document.querySelector("#hull");
@@ -344,6 +355,8 @@
       let damageFlash = 0;
       let shake = 0;
       let audioContext;
+      let masterGain;
+      let soundMuted = false;
       let scenery = [];
       let obstacles = [];
       let pickups = [];
@@ -381,15 +394,26 @@
       function random(min, max) { return min + Math.random() * (max - min); }
 
       function playSound(kind) {
+        if (soundMuted) return;
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) return;
-        audioContext ||= new AudioContextClass();
+        if (!audioContext) {
+          audioContext = new AudioContextClass();
+          masterGain = audioContext.createGain();
+          masterGain.connect(audioContext.destination);
+        }
         if (audioContext.state === "suspended") audioContext.resume();
 
         const sounds = {
+          start: { start: 330, end: 660, duration: .28, volume: .07, type: "sine" },
+          fire: { start: 620, end: 260, duration: .055, volume: .035, type: "square" },
           hit: { start: 260, end: 85, duration: .13, volume: .065, type: "triangle" },
+          destroy: { start: 170, end: 48, duration: .3, volume: .085, type: "sawtooth" },
           damage: { start: 170, end: 48, duration: .24, volume: .09, type: "sawtooth" },
-          pickup: { start: 540, end: 950, duration: .16, volume: .055, type: "sine" }
+          pickup: { start: 540, end: 950, duration: .16, volume: .055, type: "sine" },
+          pause: { start: 440, end: 330, duration: .11, volume: .05, type: "sine" },
+          resume: { start: 330, end: 520, duration: .13, volume: .05, type: "sine" },
+          over: { start: 330, end: 110, duration: .38, volume: .075, type: "triangle" }
         };
         const sound = sounds[kind];
         const now = audioContext.currentTime;
@@ -401,9 +425,22 @@
         gain.gain.setValueAtTime(sound.volume, now);
         gain.gain.exponentialRampToValueAtTime(.001, now + sound.duration);
         oscillator.connect(gain);
-        gain.connect(audioContext.destination);
+        gain.connect(masterGain);
         oscillator.start(now);
         oscillator.stop(now + sound.duration);
+      }
+
+      function toggleSound() {
+        soundMuted = !soundMuted;
+        soundWaves.hidden = soundMuted;
+        soundMutedIcon.hidden = !soundMuted;
+        audioButton.setAttribute("aria-pressed", String(soundMuted));
+        audioButton.setAttribute("aria-label", soundMuted ? "Unmute sound" : "Mute sound");
+        audioButton.title = soundMuted ? "Unmute sound" : "Mute sound";
+        if (masterGain && audioContext) {
+          masterGain.gain.setTargetAtTime(soundMuted ? 0 : 1, audioContext.currentTime, .015);
+        }
+        if (!soundMuted) playSound("resume");
       }
 
       function roundRect(x, y, w, h, radius) {
@@ -668,6 +705,7 @@
 
       function fire() {
         if (ammo < 8) return;
+        playSound("fire");
         for (let index = 0; index < 8; index++) {
           shots.push({
             x: plane.x + (index - 3.5) * 9,
@@ -743,6 +781,7 @@
                 obstacles.splice(itemIndex, 1);
                 score += 10;
                 scoreDisplay.textContent = String(score).padStart(3, "0");
+                playSound("destroy");
               }
               hit = true;
               break;
@@ -865,6 +904,7 @@
       }
 
       function startGame() {
+        playSound("start");
         state = "playing";
         elapsed = 0;
         score = 0;
@@ -898,16 +938,19 @@
 
       function pauseGame() {
         if (state === "playing") {
+          playSound("pause");
           state = "paused";
           clearControls();
           showScreen("paused");
         } else if (state === "paused") {
+          playSound("resume");
           state = "playing";
           screen.hidden = true;
         }
       }
 
       function endGame(reason = "hull") {
+        playSound("over");
         state = "over";
         pauseButton.hidden = true;
         touchPauseButton.hidden = true;
@@ -936,6 +979,7 @@
       }
 
       startButton.addEventListener("click", startGame);
+      audioButton.addEventListener("click", toggleSound);
       pauseButton.addEventListener("click", pauseGame);
       touchPauseButton.addEventListener("click", pauseGame);
       window.addEventListener("resize", resize);
