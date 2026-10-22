@@ -982,8 +982,9 @@
       }
 
       function startGame() {
-        if (gestureStartSoundPending) gestureStartSoundPending = false;
-        else playSound("start");
+        // Initialize/resume Web Audio directly in the Start click gesture.
+        // iOS Safari can reject audio initialization from an earlier pointerdown.
+        if (!unlockAudio("start")) playSound("start");
         state = "playing";
         elapsed = 0;
         score = 0;
@@ -1058,7 +1059,6 @@
       }
 
       startButton.addEventListener("click", startGame);
-      startButton.addEventListener("pointerdown", () => unlockAudio("start"));
       audioButton.addEventListener("pointerdown", () => unlockAudio("resume"));
       audioButton.addEventListener("click", toggleSound);
       pauseButton.addEventListener("click", pauseGame);
