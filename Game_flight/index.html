@@ -97,6 +97,8 @@
       transition: transform .16s ease, background .16s ease;
     }
     .pause-button:hover, .icon-button:hover, .audio-button:hover { background: white; transform: translateY(-2px); }
+    .audio-button { color: #fff; border-color: #087328; background: #168b34; }
+    .audio-button[aria-pressed="true"] { color: #fff; border-color: #a51425; background: #d32f3f; }
     .pause-button svg { width: 16px; height: 16px; }
     .audio-button svg { width: 17px; height: 17px; }
 
@@ -363,6 +365,7 @@
       let soundMuted = false;
       let gestureStartSoundPending = false;
       let gestureFireSoundPending = false;
+      let fireControlActive = false;
       const soundEffects = {
         start: { start: 330, end: 660, duration: .28, volume: .14, type: "sine" },
         fire: { start: 620, end: 260, duration: .055, volume: .08, type: "square" },
@@ -508,6 +511,7 @@
       }
 
       function toggleSound() {
+        if (fireControlActive) return;
         soundMuted = !soundMuted;
         soundWaves.hidden = soundMuted;
         soundMutedIcon.hidden = !soundMuted;
@@ -1044,6 +1048,7 @@
         controls.forward = false;
         controls.backward = false;
         controls.fire = false;
+        fireControlActive = false;
         touchDrag.active = false;
         touchDrag.pointerId = null;
         touchDrag.tilt = 0;
@@ -1112,11 +1117,17 @@
         const control = button.dataset.control;
         button.addEventListener("pointerdown", (event) => {
           event.preventDefault();
-          if (control === "fire") unlockAudio("fire");
+          if (control === "fire") {
+            fireControlActive = true;
+            unlockAudio("fire");
+          }
           controls[control] = true;
           button.setPointerCapture(event.pointerId);
         });
-        const release = () => { controls[control] = false; };
+        const release = () => {
+          controls[control] = false;
+          if (control === "fire") setTimeout(() => { fireControlActive = false; }, 0);
+        };
         button.addEventListener("pointerup", release);
         button.addEventListener("pointercancel", release);
         button.addEventListener("lostpointercapture", release);
