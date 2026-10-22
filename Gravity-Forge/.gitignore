@@ -1,0 +1,12 @@
+# Node / dev
+node_modules/
+*.log
+
+# Dev render output
+tools/levels_out/
+tools/levels_sheet.png
+tools/sheet_*.png
+
+# OS cruft
+.DS_Store
+Thumbs.db

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0e1a" />
+  <meta name="description" content="Gravity Forge — a polished puzzle-platformer where a tiny robot bends gravity to escape the Forge. Free, no downloads, runs in your browser." />
+  <title>Gravity Forge — A Gravity-Bending Robot Adventure</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- The game canvas renders behind every UI layer -->
+  <div id="game-container">
+    <canvas id="game"></canvas>
+  </div>
+
+  <!-- ===================== HUD (in-game) ===================== -->
+  <div id="hud" class="hidden" aria-hidden="true">
+    <button id="hud-pause" class="hud-btn" title="Pause (P / Esc)">⏸</button>
+    <div id="hud-level" class="hud-chip">1 · First Steps</div>
+    <div class="hud-spacer"></div>
+    <div id="hud-timer" class="hud-chip hud-timer">00:00.00</div>
+    <div id="hud-deaths" class="hud-chip" title="Deaths this run">☠ <span id="hud-deaths-n">0</span></div>
+    <div id="hud-keys" class="hud-chip hidden" title="Keys collected">🔑 <span id="hud-keys-n">0</span></div>
+    <div id="hud-hint" class="hud-chip hud-hint hidden"></div>
+  </div>
+
+  <!-- ===================== Mobile controls ===================== -->
+  <div id="touch-controls" class="hidden" aria-hidden="true">
+    <div id="joy-zone"></div>
+    <div class="tc-right">
+      <div id="btn-jump" class="tc-btn tc-btn-jump" role="button" aria-label="Jump">▲</div>
+      <div id="btn-grav" class="tc-btn tc-btn-grav" role="button" aria-label="Set gravity">
+        <span class="grav-arrow" id="grav-arrow">▼</span>
+      </div>
+      <button id="btn-fullscreen" class="hud-btn tc-fs" aria-label="Fullscreen">⛶</button>
+    </div>
+  </div>
+
+  <!-- ===================== Overlay screens ===================== -->
+  <div id="overlay-root">
+    <div id="vignette"></div>
+
+    <!-- Main menu -->
+    <section id="screen-menu" class="screen">
+      <div class="menu-inner">
+        <div class="logo-wrap">
+          <h1 class="logo">GRAVITY<span class="logo-accent">FORGE</span></h1>
+          <p class="logo-sub">a gravity-bending robot adventure</p>
+        </div>
+        <div class="menu-stats">
+          <span id="menu-stars">★ 0 / 66</span>
+          <span id="menu-deaths">☠ 0</span>
+          <span id="menu-progress">0 / 22</span>
+        </div>
+        <nav class="menu-buttons">
+          <button class="btn btn-primary" id="btn-continue">▶ Continue</button>
+          <button class="btn" id="btn-levels">🗺 Level Select</button>
+          <button class="btn" id="btn-howto">❓ How to Play</button>
+          <button class="btn" id="btn-settings">⚙ Settings</button>
+        </nav>
+        <p class="menu-foot">100% vanilla JS · Web Audio · Canvas · works offline from GitHub Pages</p>
+      </div>
+    </section>
+
+    <!-- Level select -->
+    <section id="screen-levels" class="screen hidden">
+      <div class="panel panel-wide">
+        <div class="panel-head">
+          <h2>Select Level</h2>
+          <button class="btn btn-back" data-back="menu">← Back</button>
+        </div>
+        <div id="level-grid" class="level-grid"></div>
+      </div>
+    </section>
+
+    <!-- How to play -->
+    <section id="screen-howto" class="screen hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>How to Play</h2>
+          <button class="btn btn-back" data-back="menu">← Back</button>
+        </div>
+        <div class="howto-body">
+          <div class="howto-col">
+            <h3>⌨ Keyboard</h3>
+            <ul>
+              <li><b>← → / A D</b> — walk along the floor</li>
+              <li><b>↑ / W / Space</b> — jump</li>
+              <li><b>Z / Q / [</b> — rotate gravity CCW</li>
+              <li><b>X / E / ]</b> — rotate gravity CW</li>
+              <li><b>R</b> — restart level &nbsp;·&nbsp; <b>M</b> — mute</li>
+              <li><b>P / Esc</b> — pause &nbsp;·&nbsp; <b>F</b> — fullscreen</li>
+            </ul>
+            <h3>📱 Touch</h3>
+            <ul>
+              <li>Drag left half — virtual joystick (walk)</li>
+              <li><b>▲</b> — jump</li>
+              <li><b>●</b> — tap: rotate 90° · drag: set gravity direction</li>
+            </ul>
+          </div>
+          <div class="howto-col">
+            <h3>⚡ The core idea</h3>
+            <p>Gravity is a <em>force you aim</em>. You always fall toward it, jump away from it, and walk along whatever surface you land on. Rotate gravity and the whole world spins around your robot.</p>
+            <h3>☠ Hazards</h3>
+            <p><b class="c-spike">Spikes</b>, <b class="c-laser">laser beams</b>, <b class="c-crush">crushers</b> and <b class="c-fall">falling blocks</b> destroy your robot — but checkpoints keep your progress, and every death is just a lesson. Keys open doors, switches open everything else.</p>
+            <h3>⭐ Scoring</h3>
+            <p>Finish fast for <b>up to 3 stars</b> per level. Best times, stars and deaths are saved automatically.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section id="screen-settings" class="screen hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Settings</h2>
+          <button class="btn btn-back" data-back="menu">← Back</button>
+        </div>
+        <div class="settings-body">
+          <label class="setting-row">
+            <span>🎵 Music <span id="val-music" class="val"></span></span>
+            <input type="range" id="set-music" min="0" max="100" step="1" />
+          </label>
+          <label class="setting-row">
+            <span>🔊 Sound FX <span id="val-sfx" class="val"></span></span>
+            <input type="range" id="set-sfx" min="0" max="100" step="1" />
+          </label>
+          <label class="setting-row">
+            <span>💥 Screen shake</span>
+            <input type="checkbox" id="set-shake" class="toggle" checked />
+          </label>
+          <label class="setting-row">
+            <span>✨ Particles</span>
+            <input type="checkbox" id="set-particles" class="toggle" checked />
+          </label>
+          <label class="setting-row">
+            <span>⛶ Fullscreen</span>
+            <input type="checkbox" id="set-fullscreen" class="toggle" />
+          </label>
+          <div class="setting-row setting-danger">
+            <span>🗑 Reset all progress</span>
+            <button class="btn btn-danger" id="btn-reset-save">Reset</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pause -->
+    <section id="screen-pause" class="screen hidden">
+      <div class="panel panel-small">
+        <h2>Paused</h2>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" id="btn-resume">▶ Resume</button>
+          <button class="btn" id="btn-restart">↺ Restart Level</button>
+          <button class="btn" id="btn-pause-settings">⚙ Settings</button>
+          <button class="btn" id="btn-quit">⌂ Main Menu</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Level complete -->
+    <section id="screen-complete" class="screen hidden">
+      <div class="panel panel-small complete-panel">
+        <div id="complete-stars" class="complete-stars"></div>
+        <h2 id="complete-title">Level Complete!</h2>
+        <p id="complete-sub" class="complete-sub"></p>
+        <div class="complete-stats">
+          <div class="stat"><span class="stat-label">Time</span><span id="complete-time" class="stat-val">0:00.00</span></div>
+          <div class="stat"><span class="stat-label">Best</span><span id="complete-best" class="stat-val">—</span></div>
+          <div class="stat"><span class="stat-label">Deaths</span><span id="complete-deaths" class="stat-val">0</span></div>
+        </div>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" id="btn-next">Next Level ▶</button>
+          <button class="btn" id="btn-replay">↺ Replay</button>
+          <button class="btn" id="btn-complete-levels">🗺 Levels</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final victory -->
+    <section id="screen-victory" class="screen hidden">
+      <div class="panel panel-small complete-panel">
+        <div class="victory-badge">🏆</div>
+        <h2>You conquered the Forge!</h2>
+        <p class="complete-sub">Every level complete. The gravity core hums quietly now…</p>
+        <div class="complete-stats">
+          <div class="stat"><span class="stat-label">Stars</span><span id="vic-stars" class="stat-val">0/66</span></div>
+          <div class="stat"><span class="stat-label">Total time</span><span id="vic-time" class="stat-val">—</span></div>
+          <div class="stat"><span class="stat-label">Deaths</span><span id="vic-deaths" class="stat-val">0</span></div>
+        </div>
+        <div class="menu-buttons">
+          <button class="btn btn-primary" id="btn-vic-levels">🗺 Level Select</button>
+          <button class="btn" id="btn-vic-menu">⌂ Main Menu</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
